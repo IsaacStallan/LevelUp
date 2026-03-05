@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import db from '../db.js';
 import { verifyToken } from '../middleware/auth.js';
+import { checkUnlocks } from '../titles.js';
 
 const router = Router();
 router.use(verifyToken);
@@ -132,10 +133,22 @@ router.post('/:id/complete', (req, res, next) => {
     ).run(habit.id, req.user.id, today, xp);
 
     const xpRow = db.prepare('SELECT COALESCE(SUM(xp_earned), 0) as total FROM habit_logs WHERE user_id = ?').get(req.user.id);
-    const xp_total = xpRow.total;
+    const xp_total = Number(xpRow.total);
     const level = Math.min(Math.floor(xp_total / 100), 100);
 
-    res.json({ xp_earned: xp, xp_total, level, streak: newStreak });
+    const totalComp = db.prepare('SELECT COUNT(*) as total FROM habit_logs WHERE user_id = ?').get(req.user.id);
+    const userRow = db.prepare('SELECT unlocked_titles FROM users WHERE id = ?').get(req.user.id);
+    const currentUnlocked = JSON.parse(userRow?.unlocked_titles || '[]');
+    const newTitles = checkUnlocks(
+      { total_completions: Number(totalComp.total), current_streak: newStreak, xp_total, level },
+      currentUnlocked
+    );
+    if (newTitles.length > 0) {
+      const merged = JSON.stringify([...currentUnlocked, ...newTitles]);
+      db.prepare('UPDATE users SET unlocked_titles = ? WHERE id = ?').run(merged, req.user.id);
+    }
+
+    res.json({ xp_earned: xp, xp_total, level, streak: newStreak, new_titles: newTitles });
   } catch (err) {
     next(err);
   }

@@ -65,6 +65,8 @@ router.get('/stats', (req, res, next) => {
       prev = date;
     }
 
+    const userRow = db.prepare('SELECT equipped_title, freeze_tokens FROM users WHERE id = ?').get(userId);
+
     res.json({
       xp_total,
       level,
@@ -73,6 +75,8 @@ router.get('/stats', (req, res, next) => {
       longest_streak,
       habits_completed_today: todayRow.count,
       total_completions: totalRow.total,
+      equipped_title: userRow?.equipped_title || '',
+      freeze_tokens: userRow?.freeze_tokens ?? 0,
     });
   } catch (err) {
     next(err);

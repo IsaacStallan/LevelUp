@@ -8,6 +8,10 @@ import authRoutes from './routes/auth.js';
 import habitRoutes from './routes/habits.js';
 import gamificationRoutes from './routes/gamification.js';
 import paymentRoutes from './routes/payments.js';
+import leaderboardRoutes from './routes/leaderboard.js';
+import analyticsRoutes from './routes/analytics.js';
+import streakRoutes from './routes/streaks.js';
+import titleRoutes from './routes/titles.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -36,6 +40,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/habits', habitRoutes);
 app.use('/api/gamification', gamificationRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/streaks', streakRoutes);
+app.use('/api/titles', titleRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => res.json({ ok: true }));

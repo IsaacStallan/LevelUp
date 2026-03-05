@@ -69,6 +69,9 @@ db.exec(`
     email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     username TEXT NOT NULL,
+    freeze_tokens INTEGER NOT NULL DEFAULT 3,
+    unlocked_titles TEXT NOT NULL DEFAULT '[]',
+    equipped_title TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -101,6 +104,24 @@ db.exec(`
     current_period_end TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS streak_freezes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    freeze_date TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(user_id, freeze_date)
+  );
 `);
+
+// Migrate existing databases (safe — ignored if column already exists)
+for (const m of [
+  `ALTER TABLE users ADD COLUMN freeze_tokens INTEGER NOT NULL DEFAULT 3`,
+  `ALTER TABLE users ADD COLUMN unlocked_titles TEXT NOT NULL DEFAULT '[]'`,
+  `ALTER TABLE users ADD COLUMN equipped_title TEXT NOT NULL DEFAULT ''`,
+]) {
+  try { sqlDb.exec(m); } catch { /* column already exists */ }
+}
+persist();
 
 export default db;

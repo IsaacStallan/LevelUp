@@ -165,6 +165,9 @@ export default function Dashboard() {
                   <div className="text-[56px] sm:text-6xl leading-none">{character.emoji}</div>
                   <div className="sm:mt-1 text-center sm:text-center">
                     <p className="text-sm font-bold text-purple-400">{character.title}</p>
+                    {stats?.equipped_title && (
+                      <p className="text-[10px] text-yellow-400 mt-0.5">{stats.equipped_title}</p>
+                    )}
                     <p className="text-[11px] text-gray-600 tabular-nums">Lv.{currentLevel}</p>
                   </div>
                 </div>
@@ -177,12 +180,28 @@ export default function Dashboard() {
                     xp_to_next_level={stats?.xp_to_next_level ?? 100}
                     flash={xpFlash}
                   />
-                  {/* Stats: 3 cols on all sizes, compact on mobile */}
-                  <div className="grid grid-cols-3 gap-2 pt-1">
+                  {/* Stats: 4 cols on all sizes */}
+                  <div className="grid grid-cols-4 gap-2 pt-1">
                     <StatPill label="Streak"  value={stats?.current_streak ?? 0}        icon="🔥" accent="fire" />
                     <StatPill label="Today"   value={stats?.habits_completed_today ?? 0} icon="✅" accent="green" />
                     <StatPill label="Total XP" value={stats?.xp_total ?? 0}              icon="⚡" accent="gold" />
+                    <StatPill label="Freeze"  value={stats?.freeze_tokens ?? 0}          icon="🧊" accent={null} />
                   </div>
+                  {/* Streak protect button — visible after 6pm with no completions and streak active */}
+                  {(stats?.current_streak ?? 0) > 0 &&
+                   (stats?.habits_completed_today ?? 0) === 0 &&
+                   (stats?.freeze_tokens ?? 0) > 0 &&
+                   new Date().getHours() >= 18 && (
+                    <FreezeButton
+                      tokens={stats.freeze_tokens}
+                      onFreeze={async () => {
+                        try {
+                          const { data } = await client.post('/streaks/freeze');
+                          setStats(prev => prev ? { ...prev, freeze_tokens: data.freeze_tokens } : prev);
+                        } catch { /* ignore */ }
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -233,6 +252,36 @@ export default function Dashboard() {
         )}
       </main>
     </div>
+  );
+}
+
+function FreezeButton({ tokens, onFreeze }) {
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+
+  async function handle() {
+    setBusy(true);
+    await onFreeze();
+    setDone(true);
+    setBusy(false);
+  }
+
+  if (done) {
+    return (
+      <div className="text-xs text-center text-blue-400 bg-blue-950/30 border border-blue-800/40 rounded-lg py-2">
+        🧊 Streak protected for today!
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={handle}
+      disabled={busy}
+      className="w-full text-xs font-medium text-blue-300 bg-blue-950/30 border border-blue-800/40 hover:bg-blue-950/50 rounded-lg py-2 transition-colors"
+    >
+      {busy ? '…' : `🧊 Protect streak (${tokens} token${tokens === 1 ? '' : 's'} left)`}
+    </button>
   );
 }
 
