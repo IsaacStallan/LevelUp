@@ -32,7 +32,7 @@ export default function App() {
       <BackgroundScene />
       <BrowserRouter>
         <AuthProvider>
-          <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ position: 'relative', zIndex: 2 }}>
             <AppRoutes />
           </div>
         </AuthProvider>

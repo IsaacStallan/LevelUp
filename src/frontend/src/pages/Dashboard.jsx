@@ -100,7 +100,7 @@ export default function Dashboard() {
   const character    = getCharacter(currentLevel);
 
   return (
-    <div className="page-enter min-h-screen bg-gray-950">
+    <div className="page-enter min-h-screen">
       {/* Level-up overlay (same stage) */}
       <LevelUpOverlay
         show={!!levelUp}

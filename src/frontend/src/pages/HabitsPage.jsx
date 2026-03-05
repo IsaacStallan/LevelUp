@@ -71,7 +71,7 @@ export default function HabitsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950">
+    <div className="min-h-screen">
       <NavHeader level={user?.level ?? 0} />
 
       <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4">

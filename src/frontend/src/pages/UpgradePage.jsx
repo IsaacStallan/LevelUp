@@ -27,7 +27,7 @@ export default function UpgradePage() {
     : CHECKOUT_URL;
 
   return (
-    <div className="page-enter min-h-screen bg-gray-950 flex flex-col relative overflow-hidden">
+    <div className="page-enter min-h-screen flex flex-col relative overflow-hidden">
       {/* Floating orbs */}
       <div aria-hidden="true" className="pointer-events-none">
         <div className="orb w-64 h-64 bg-purple-600/20 top-[-80px] left-[-80px]" style={{ '--dur': '8s', '--delay': '0s' }} />
