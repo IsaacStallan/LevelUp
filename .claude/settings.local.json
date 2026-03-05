@@ -1,6 +1,17 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(cd /Users/isaacstallan/gamify-life/src/frontend && node -e \"\nconst pkg = JSON.parse\\(require\\('fs'\\).readFileSync\\('package.json','utf8'\\)\\);\nconsole.log\\('deps:', JSON.stringify\\(pkg.dependencies\\)\\);\n\" 2>&1)",
+      "Bash(cd /Users/isaacstallan/gamify-life/src/backend && node --input-type=module <<'EOF' 2>&1\nimport './src/routes/leaderboard.js';\nimport './src/routes/analytics.js';\nimport './src/routes/streaks.js';\nimport './src/routes/titles.js';\nconsole.log\\('All 4 route files loaded OK'\\);\nEOF)",
+      "Bash(pkill -f \"node src/index.js\" 2>/dev/null; pkill -f \"vite\" 2>/dev/null; sleep 1; echo \"killed\")",
+      "Bash(T=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJ0ZXN0ZXJAdGVzdC5jb20iLCJpYXQiOjE3NzI3MTA3NzMsImV4cCI6MTc3MzMxNTU3M30.oeEr3_2ruHsDarpsySjfSPMWJqq-1ag13tsTUUgbHZA\"\ncurl -s -H \"Authorization: Bearer $T\" http://localhost:3001/api/gamification/stats)",
+      "Bash(T=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJ0ZXN0ZXJAdGVzdC5jb20iLCJpYXQiOjE3NzI3MTA3NzMsImV4cCI6MTc3MzMxNTU3M30.oeEr3_2ruHsDarpsySjfSPMWJqq-1ag13tsTUUgbHZA\"\ncurl -s -H \"Authorization: Bearer $T\" http://localhost:3001/api/titles)",
+      "Bash(T=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJ0ZXN0ZXJAdGVzdC5jb20iLCJpYXQiOjE3NzI3MTA3NzMsImV4cCI6MTc3MzMxNTU3M30.oeEr3_2ruHsDarpsySjfSPMWJqq-1ag13tsTUUgbHZA\"\ncurl -s -H \"Authorization: Bearer $T\" http://localhost:3001/api/analytics\ncurl -s -H \"Authorization: Bearer $T\" http://localhost:3001/api/streaks/tokens)",
+      "Bash(cd /Users/isaacstallan/gamify-life/src/frontend && npm run build 2>&1 | tail -20)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "claude-flow"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }
