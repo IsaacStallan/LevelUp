@@ -1,0 +1,348 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Global ─────────────────────────────────────────────────────── */
+body {
+  background-color: #0a0a0f;
+  background-image:
+    radial-gradient(ellipse 80% 40% at 50% -10%, rgba(124, 58, 237, 0.12) 0%, transparent 70%);
+  color: #f3f4f6;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Page fade-in on mount ─────────────────────────────────────── */
+@keyframes page-fade-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter {
+  animation: page-fade-in 0.3s ease-out both;
+}
+
+/* ─── Skeleton loading ───────────────────────────────────────────── */
+@keyframes skeleton-wave {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #1a1a28 25%, #252535 50%, #1a1a28 75%);
+  background-size: 200% 100%;
+  animation: skeleton-wave 1.6s ease-in-out infinite;
+  border-radius: 10px;
+}
+
+/* ─── Character card pulsing glow border ─────────────────────────── */
+@keyframes card-glow-border {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(124, 58, 237, 0.3),
+      0 0 24px rgba(124, 58, 237, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(168, 85, 247, 0.55),
+      0 0 48px rgba(168, 85, 247, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+}
+.card-glow {
+  animation: card-glow-border 3.5s ease-in-out infinite;
+  border: none !important; /* replaced by box-shadow outline */
+}
+
+/* ─── XP bar shimmer sweep ───────────────────────────────────────── */
+@keyframes xp-shimmer {
+  from { left: -60%; }
+  to   { left: 160%; }
+}
+.xp-shimmer {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 55%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  animation: xp-shimmer 2.6s ease-in-out 0.5s infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* ─── Background drifting micro-particles (character card) ───────── */
+@keyframes drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(var(--dx1, 8px),  var(--dy1, -10px)) scale(1.1); }
+  66%       { transform: translate(var(--dx2, -6px), var(--dy2, -6px))  scale(0.9); }
+}
+.drift-dot {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: drift var(--dur, 5s) ease-in-out var(--delay, 0s) infinite;
+}
+
+/* ─── Logo glow ─────────────────────────────────────────────────── */
+.logo-glow {
+  text-shadow:
+    0 0 16px rgba(168, 85, 247, 0.55),
+    0 0 32px rgba(124, 58, 237, 0.3);
+  transition: text-shadow 0.2s ease;
+}
+.logo-glow:hover {
+  text-shadow:
+    0 0 24px rgba(168, 85, 247, 0.9),
+    0 0 48px rgba(124, 58, 237, 0.5);
+}
+
+/* ─── Glowing level badge ────────────────────────────────────────── */
+.level-badge {
+  box-shadow:
+    0 0 0 1px rgba(168, 85, 247, 0.4),
+    0 0 12px rgba(168, 85, 247, 0.25),
+    inset 0 0 8px rgba(168, 85, 247, 0.08);
+}
+
+/* ─── Button glow ────────────────────────────────────────────────── */
+.btn-primary {
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 12px rgba(124, 58, 237, 0.3);
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, #8b46f5, #b467ff);
+  box-shadow: 0 4px 20px rgba(168, 85, 247, 0.55);
+  transform: scale(1.03) translateY(-1px);
+}
+.btn-primary:active {
+  transform: scale(0.96);
+  box-shadow: 0 1px 6px rgba(124, 58, 237, 0.3);
+}
+
+/* ─── Glassmorphism card ─────────────────────────────────────────── */
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.2s ease;
+}
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* ─── Done card tint ─────────────────────────────────────────────── */
+.card-done {
+  background: rgba(34, 197, 94, 0.04) !important;
+  border-color: rgba(34, 197, 94, 0.15) !important;
+}
+
+/* ─── Upgrade page floating orbs ─────────────────────────────────── */
+@keyframes orb-float {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+  40%       { transform: translate(30px, -40px) scale(1.08); opacity: 0.7; }
+  70%       { transform: translate(-20px, -20px) scale(0.94); opacity: 0.4; }
+}
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+  animation: orb-float var(--dur, 10s) ease-in-out var(--delay, 0s) infinite;
+}
+
+/* ─── Upgrade feature checkmark draw ────────────────────────────── */
+@keyframes feature-check {
+  from { stroke-dashoffset: 18; }
+  to   { stroke-dashoffset: 0; }
+}
+.feature-check path {
+  stroke-dasharray: 18;
+  stroke-dashoffset: 18;
+  animation: feature-check 0.5s cubic-bezier(0.65, 0, 0.35, 1) var(--delay, 0s) both;
+}
+
+/* ─── Stat icon glows ────────────────────────────────────────────── */
+.stat-glow-fire  { filter: drop-shadow(0 0 6px rgba(251, 146,  60, 0.7)); }
+.stat-glow-green { filter: drop-shadow(0 0 6px rgba( 34, 197,  94, 0.7)); }
+.stat-glow-gold  { filter: drop-shadow(0 0 6px rgba(251, 191,  36, 0.7)); }
+
+/* ─── Input focus glow ───────────────────────────────────────────── */
+.input-field {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  transition: all 0.2s ease;
+  outline: none;
+}
+.input-field::placeholder { color: rgba(255,255,255,0.25); }
+.input-field:focus {
+  border-color: rgba(168, 85, 247, 0.6);
+  background: rgba(168, 85, 247, 0.06);
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.12);
+}
+
+/* ─── Habit card spring squish ─────────────────────────────────── */
+@keyframes card-squish {
+  0%   { transform: scale(1); }
+  15%  { transform: scaleX(0.91) scaleY(1.09); }
+  35%  { transform: scaleX(1.07) scaleY(0.94); }
+  55%  { transform: scaleX(0.97) scaleY(1.03); }
+  75%  { transform: scaleX(1.02) scaleY(0.99); }
+  100% { transform: scale(1); }
+}
+.anim-squish {
+  animation: card-squish 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
+}
+
+/* ─── Floating XP number ─────────────────────────────────────────── */
+@keyframes xp-float {
+  0%   { opacity: 1;   transform: translateY(0)    scale(1.8); }
+  30%  { opacity: 1;   transform: translateY(-18px) scale(1.3); }
+  70%  { opacity: 0.7; transform: translateY(-40px) scale(1.0); }
+  100% { opacity: 0;   transform: translateY(-64px) scale(0.7); }
+}
+.anim-xp-float {
+  animation: xp-float 2s ease-out forwards;
+  pointer-events: none;
+}
+
+/* ─── SVG checkmark stroke draw ─────────────────────────────────── */
+@keyframes checkmark-draw {
+  from { stroke-dashoffset: 30; }
+  to   { stroke-dashoffset: 0; }
+}
+.anim-checkmark path {
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  animation: checkmark-draw 0.4s cubic-bezier(0.65, 0, 0.35, 1) 0.05s forwards;
+}
+
+/* ─── Particle burst ─────────────────────────────────────────────── */
+@keyframes particle-fly {
+  0%   { transform: translate(0, 0) scale(1);    opacity: 1; }
+  60%  { opacity: 0.9; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(0.15); opacity: 0; }
+}
+.anim-particle {
+  animation: particle-fly var(--dur, 0.65s) ease-out var(--delay, 0s) forwards;
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 30;
+}
+
+/* ─── Level-up overlay ───────────────────────────────────────────── */
+@keyframes levelup-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.anim-levelup-overlay {
+  animation: levelup-overlay-in 0.35s ease-out forwards;
+}
+
+/* ─── Level number slam-in ───────────────────────────────────────── */
+@keyframes level-pop {
+  0%   { transform: scale(0.2) rotate(-8deg); opacity: 0; }
+  55%  { transform: scale(1.25) rotate(3deg); opacity: 1; }
+  75%  { transform: scale(0.92) rotate(-1deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+.anim-level-pop {
+  animation: level-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.35s both;
+}
+
+/* ─── Banner slide in from top ───────────────────────────────────── */
+@keyframes banner-slide-in {
+  from { transform: translateY(-120%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+.anim-banner-slide {
+  animation: banner-slide-in 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s both;
+}
+
+/* ─── XP bar gold flash overlay ──────────────────────────────────── */
+@keyframes xp-gold-flash {
+  0%   { opacity: 0; box-shadow: none; }
+  25%  { opacity: 1; box-shadow: 0 0 24px rgba(251, 191, 36, 1); }
+  65%  { opacity: 1; box-shadow: 0 0 32px rgba(251, 191, 36, 0.9); }
+  100% { opacity: 0; box-shadow: none; }
+}
+.anim-xp-gold {
+  animation: xp-gold-flash 1.3s ease-in-out forwards;
+  background: linear-gradient(90deg, #d97706, #f59e0b, #fde68a, #f59e0b);
+  border-radius: inherit;
+  position: absolute;
+  inset: 0;
+}
+
+/* ─── Confetti fall ──────────────────────────────────────────────── */
+@keyframes confetti-fall {
+  0%   { transform: translateY(-10px) rotate(0deg) scale(1); opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translateY(110vh) rotate(var(--rot, 540deg)) scale(0.5); opacity: 0; }
+}
+.anim-confetti {
+  animation: confetti-fall var(--dur, 2.2s) ease-in var(--delay, 0s) forwards;
+  position: fixed;
+  top: 0;
+  pointer-events: none;
+  z-index: 60;
+}
+
+/* ─── Character spotlight pulse ─────────────────────────────────── */
+@keyframes spotlight {
+  0%, 100% { filter: drop-shadow(0 0 20px rgba(168,85,247,0.5)) drop-shadow(0 0 40px rgba(168,85,247,0.2)); transform: scale(1); }
+  50%       { filter: drop-shadow(0 0 50px rgba(168,85,247,1))   drop-shadow(0 0 80px rgba(168,85,247,0.5)); transform: scale(1.18); }
+}
+.anim-spotlight { animation: spotlight 1.6s ease-in-out infinite; }
+
+/* ─── Character levelup bounce ───────────────────────────────────── */
+@keyframes char-levelup {
+  0%   { transform: translateY(0)     scale(1); }
+  20%  { transform: translateY(-32px) scale(1.3); }
+  45%  { transform: translateY(-18px) scale(1.15); }
+  65%  { transform: translateY(-26px) scale(1.22); }
+  82%  { transform: translateY(-6px)  scale(1.05); }
+  100% { transform: translateY(0)     scale(1); }
+}
+.anim-char-levelup { animation: char-levelup 0.9s ease-out 0.2s both; }
+
+/* ─── Stage-up title reveal ──────────────────────────────────────── */
+@keyframes stage-title-in {
+  0%   { opacity: 0; letter-spacing: 0.6em; transform: scale(0.85); }
+  50%  { opacity: 1; letter-spacing: 0.2em; transform: scale(1.05); }
+  100% { opacity: 1; letter-spacing: 0.08em; transform: scale(1); }
+}
+.anim-stage-title { animation: stage-title-in 0.9s cubic-bezier(0.16,1,0.3,1) 0.45s both; }
+
+/* ─── Stage-up banner slide up ───────────────────────────────────── */
+@keyframes banner-slide-up {
+  from { transform: translateY(120%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.anim-banner-up { animation: banner-slide-up 0.55s cubic-bezier(0.34,1.56,0.64,1) 0.15s both; }
+
+/* ─── Gold spotlight (stage-up) ──────────────────────────────────── */
+@keyframes spotlight-gold {
+  0%, 100% { filter: drop-shadow(0 0 20px rgba(251,191,36,0.5)) drop-shadow(0 0 40px rgba(251,191,36,0.2)); transform: scale(1); }
+  50%       { filter: drop-shadow(0 0 60px rgba(251,191,36,1))   drop-shadow(0 0 100px rgba(251,191,36,0.6)); transform: scale(1.2); }
+}
+.anim-spotlight-gold { animation: spotlight-gold 1.6s ease-in-out infinite; }
+
+/* ─── Mobile nav slide-down ──────────────────────────────────────── */
+@keyframes menu-slide-down {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.anim-menu-slide { animation: menu-slide-down 0.18s ease-out forwards; }
+
+/* ─── Utilities ──────────────────────────────────────────────────── */
+@layer utilities {
+  .glow-purple {
+    box-shadow: 0 0 20px rgba(124, 58, 237, 0.5), 0 4px 16px rgba(0,0,0,0.3);
+  }
+}
