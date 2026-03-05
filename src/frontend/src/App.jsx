@@ -1,5 +1,7 @@
+import { Fragment } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
+import BackgroundScene from './components/BackgroundScene.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 import Dashboard from './pages/Dashboard.jsx';
@@ -26,10 +28,15 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
-    </BrowserRouter>
+    <Fragment>
+      <BackgroundScene />
+      <BrowserRouter>
+        <AuthProvider>
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <AppRoutes />
+          </div>
+        </AuthProvider>
+      </BrowserRouter>
+    </Fragment>
   );
 }
