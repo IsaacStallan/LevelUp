@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "start": "cd src/backend && node src/index.js",
+    "build": "cd src/backend && npm install --omit=dev",
     "dev:backend": "cd src/backend && npm run dev",
     "dev:frontend": "cd src/frontend && npm run dev",
-    "install:all": "cd src/backend && npm install && cd ../frontend && npm install",
-    "build": "cd src/frontend && npm run build"
+    "install:all": "cd src/backend && npm install && cd ../frontend && npm install"
   }
 }
