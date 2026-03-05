@@ -25,50 +25,99 @@ const css = `
 }
 `;
 
+const ORB_DEFS = [
+  {
+    w: 700, h: 700, top: "-15%", left: "-10%",
+    color: "rgba(124,58,237,0.55)",
+    animationName: "orb1",
+    animationDuration: "22s",
+    animationDelay: "0s",
+  },
+  {
+    w: 600, h: 600, top: "50%", right: "-10%",
+    color: "rgba(109,40,217,0.45)",
+    animationName: "orb2",
+    animationDuration: "28s",
+    animationDelay: "3s",
+  },
+  {
+    w: 500, h: 500, top: "20%", left: "40%",
+    color: "rgba(168,85,247,0.35)",
+    animationName: "orb3",
+    animationDuration: "19s",
+    animationDelay: "7s",
+  },
+  {
+    w: 400, h: 400, bottom: "-5%", left: "20%",
+    color: "rgba(61,10,46,0.5)",
+    animationName: "orb4",
+    animationDuration: "34s",
+    animationDelay: "12s",
+  },
+];
+
+// Generate star positions once at module load so memo works correctly
+const STARS = Array.from({ length: 50 }, (_, i) => {
+  const seed = i / 50;
+  return {
+    top:  `${((seed * 97.3 + 0.13) % 1) * 100}%`,
+    left: `${((seed * 83.7 + 0.41) % 1) * 100}%`,
+    size: i % 3 === 0 ? 2 : 1,
+    animationDuration:  `${3 + (i % 7) * 0.7}s`,
+    animationDelay:     `${(i % 5) * 0.8}s`,
+  };
+});
+
 function BackgroundScene() {
   useEffect(() => {
-    const style = document.createElement("style");
-    style.id = "bg-scene-styles";
     if (!document.getElementById("bg-scene-styles")) {
+      const style = document.createElement("style");
+      style.id = "bg-scene-styles";
       style.textContent = css;
       document.head.appendChild(style);
     }
-    return () => {};
   }, []);
 
-  const orbs = [
-    { w: 700, h: 700, top: "-15%", left: "-10%", color: "rgba(124,58,237,0.55)", anim: "orb1 22s ease-in-out infinite" },
-    { w: 600, h: 600, top: "50%", right: "-10%", color: "rgba(109,40,217,0.45)", anim: "orb2 28s ease-in-out infinite 3s" },
-    { w: 500, h: 500, top: "20%", left: "40%", color: "rgba(168,85,247,0.35)", anim: "orb3 19s ease-in-out infinite 7s" },
-    { w: 400, h: 400, bottom: "-5%", left: "20%", color: "rgba(61,10,46,0.5)", anim: "orb4 34s ease-in-out infinite 12s" },
-  ];
-
-  const stars = Array.from({ length: 50 }, (_, i) => ({
-    top: `${Math.random() * 100}%`,
-    left: `${Math.random() * 100}%`,
-    size: Math.random() > 0.7 ? 2 : 1,
-    anim: `twinkle ${3 + Math.random() * 5}s ease-in-out infinite ${Math.random() * 4}s`,
-  }));
-
   return (
-    <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: 0, pointerEvents: "none", overflow: "hidden" }}>
-      {orbs.map((o, i) => (
+    <div style={{
+      position: "fixed", top: 0, left: 0,
+      width: "100vw", height: "100vh",
+      zIndex: 0, pointerEvents: "none", overflow: "hidden",
+    }}>
+      {ORB_DEFS.map((o, i) => (
         <div key={i} style={{
-          position: "absolute", borderRadius: "50%",
-          width: o.w, height: o.h,
-          top: o.top, left: o.left, right: o.right, bottom: o.bottom,
+          position: "absolute",
+          borderRadius: "50%",
+          width: o.w,
+          height: o.h,
+          top: o.top,
+          left: o.left,
+          right: o.right,
+          bottom: o.bottom,
           background: `radial-gradient(circle, ${o.color} 0%, transparent 70%)`,
           filter: "blur(80px)",
-          animation: o.anim,
+          animationName: o.animationName,
+          animationDuration: o.animationDuration,
+          animationTimingFunction: "ease-in-out",
+          animationIterationCount: "infinite",
+          animationDelay: o.animationDelay,
+          animationFillMode: "both",
         }} />
       ))}
-      {stars.map((s, i) => (
-        <div key={`s${i}`} style={{
-          position: "absolute", borderRadius: "50%",
-          width: s.size, height: s.size,
-          top: s.top, left: s.left,
+      {STARS.map((s, i) => (
+        <div key={i} style={{
+          position: "absolute",
+          borderRadius: "50%",
+          width: s.size,
+          height: s.size,
+          top: s.top,
+          left: s.left,
           background: "white",
-          animation: s.anim,
+          animationName: "twinkle",
+          animationDuration: s.animationDuration,
+          animationTimingFunction: "ease-in-out",
+          animationIterationCount: "infinite",
+          animationDelay: s.animationDelay,
         }} />
       ))}
     </div>
