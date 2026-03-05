@@ -1,16 +1,68 @@
-import Database from 'better-sqlite3';
-import { mkdirSync } from 'fs';
+import initSqlJs from 'sql.js';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
 
 const DB_PATH = process.env.DATABASE_PATH || './data/levelup.db';
-
 mkdirSync(dirname(DB_PATH), { recursive: true });
 
-const db = new Database(DB_PATH);
+const SQL = await initSqlJs();
 
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+const fileBuffer = existsSync(DB_PATH) ? readFileSync(DB_PATH) : null;
+const sqlDb = fileBuffer ? new SQL.Database(fileBuffer) : new SQL.Database();
 
+function persist() {
+  writeFileSync(DB_PATH, Buffer.from(sqlDb.export()));
+}
+
+// ── Compatibility wrapper — matches the better-sqlite3 API used in all routes ──
+//
+//   db.prepare(sql).get(...params)   → first row as object, or undefined
+//   db.prepare(sql).all(...params)   → array of row objects
+//   db.prepare(sql).run(...params)   → { lastInsertRowid }  (persists to disk)
+//   db.exec(sql)                     → multi-statement exec  (persists to disk)
+//   db.pragma(str)                   → PRAGMA helper
+
+function prepare(sql) {
+  return {
+    get(...args) {
+      const stmt = sqlDb.prepare(sql);
+      if (args.length) stmt.bind(args);
+      const row = stmt.step() ? stmt.getAsObject() : undefined;
+      stmt.free();
+      return row;
+    },
+    all(...args) {
+      const stmt = sqlDb.prepare(sql);
+      if (args.length) stmt.bind(args);
+      const rows = [];
+      while (stmt.step()) rows.push(stmt.getAsObject());
+      stmt.free();
+      return rows;
+    },
+    run(...args) {
+      const stmt = sqlDb.prepare(sql);
+      stmt.run(args.length ? args : undefined);
+      stmt.free();
+      const rowid = sqlDb.exec('SELECT last_insert_rowid()')[0]?.values[0][0] ?? 0;
+      persist();
+      return { lastInsertRowid: rowid };
+    },
+  };
+}
+
+function exec(sql) {
+  sqlDb.exec(sql);
+  persist();
+}
+
+function pragma(str) {
+  // sql.js supports PRAGMA statements; WAL is a no-op for in-memory+export approach
+  try { sqlDb.run(`PRAGMA ${str}`); } catch { /* ignore unsupported pragmas */ }
+}
+
+const db = { prepare, exec, pragma };
+
+// ── Schema ────────────────────────────────────────────────────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
