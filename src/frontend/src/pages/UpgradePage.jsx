@@ -3,7 +3,10 @@ import { Link } from 'react-router-dom';
 import client from '../api/client.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
-const CHECKOUT_URL = import.meta.env.VITE_LEMON_SQUEEZY_CHECKOUT_URL || '#';
+const CHECKOUT_URL = import.meta.env.VITE_LEMON_SQUEEZY_CHECKOUT_URL;
+if (!CHECKOUT_URL) {
+  console.warn('UpgradePage: VITE_LEMON_SQUEEZY_CHECKOUT_URL is not set');
+}
 
 const FEATURES = [
   { icon: '📋', label: 'Unlimited habit tracking' },
@@ -104,12 +107,12 @@ export default function UpgradePage() {
                   )}
                 </div>
               ) : (
-                <a
-                  href={checkoutUrl}
+                <button
+                  onClick={() => window.open(checkoutUrl, '_blank')}
                   className="block w-full text-center bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white font-bold py-4 rounded-xl transition-colors glow-purple text-base"
                 >
                   Start Subscription — $7/mo
-                </a>
+                </button>
               )}
             </div>
           </div>

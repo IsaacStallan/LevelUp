@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import { initDb } from './db.js';
 
 import authRoutes from './routes/auth.js';
 import habitRoutes from './routes/habits.js';
@@ -62,16 +63,13 @@ app.use(cors({
 // ── Rate limiting ─────────────────────────────────────────────────────────────
 const limiterDefaults = { standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests, slow down' } };
 
-// Global: 100 req / 15 min per IP
 app.use(rateLimit({ ...limiterDefaults, windowMs: 15 * 60 * 1000, max: 100 }));
 
-// Auth: 10 req / 15 min per IP — brute-force protection
 const authLimiter = rateLimit({ ...limiterDefaults, windowMs: 15 * 60 * 1000, max: 10 });
 app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/login',    authLimiter);
 
 // ── Body parsing ──────────────────────────────────────────────────────────────
-// Raw for webhook signature verification; JSON for everything else (10 kb limit)
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '10kb' }));
 
@@ -103,16 +101,22 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/streaks', streakRoutes);
 app.use('/api/titles', titleRoutes);
 
-// Health check
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
-// Error handler
 app.use((err, _req, res, _next) => {
   console.error(err);
   const status = err.status || 500;
   res.status(status).json({ error: err.message || 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-  console.log(`LevelUp backend running on http://localhost:${PORT}`);
-});
+// ── Start ─────────────────────────────────────────────────────────────────────
+initDb()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`LevelUp backend running on http://localhost:${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('FATAL: Failed to initialise database:', err);
+    process.exit(1);
+  });

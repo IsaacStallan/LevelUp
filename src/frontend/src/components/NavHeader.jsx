@@ -32,7 +32,7 @@ export default function NavHeader({ level }) {
   function close() { setMenuOpen(false); }
 
   return (
-    <header className="relative border-b border-white/10 sticky top-0 backdrop-blur-md bg-white/[0.03] z-10">
+    <header className="relative border-b border-white/10 sticky top-0 backdrop-blur-md bg-white/[0.03] z-50">
       <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between gap-2">
 
         {/* Logo + level badge */}
@@ -70,7 +70,7 @@ export default function NavHeader({ level }) {
 
       {/* Mobile slide-down menu */}
       {menuOpen && (
-        <div className="sm:hidden absolute left-0 right-0 top-full backdrop-blur-md bg-gray-950/95 border-b border-white/10 anim-menu-slide shadow-xl z-20">
+        <div className="sm:hidden absolute left-0 right-0 top-full backdrop-blur-md bg-gray-950/95 border-b border-white/10 anim-menu-slide shadow-xl z-50">
           {/* User info */}
           <div className="px-4 py-3 border-b border-gray-800/60 bg-gray-900/50">
             <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-0.5">Signed in as</p>

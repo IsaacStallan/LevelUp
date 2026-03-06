@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import db from '../db.js';
+import { query } from '../db.js';
 import { verifyToken, requireSubscription } from '../middleware/auth.js';
 
 // 10 AI insight requests / hour per IP — prevents account-farming attacks
@@ -17,10 +17,11 @@ router.use(verifyToken);
 
 const DOW_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-function habitCurrentStreak(habitId) {
-  const logs = db.prepare(
-    `SELECT completed_date FROM habit_logs WHERE habit_id = ? ORDER BY completed_date DESC`
-  ).all(habitId);
+async function habitCurrentStreak(habitId) {
+  const { rows: logs } = await query(
+    `SELECT completed_date FROM habit_logs WHERE habit_id = $1 ORDER BY completed_date DESC`,
+    [habitId]
+  );
   let streak = 0;
   const today = new Date().toISOString().slice(0, 10);
   let check = today;
@@ -35,10 +36,12 @@ function habitCurrentStreak(habitId) {
   return streak;
 }
 
-function habitBestStreak(habitId) {
-  const dates = db.prepare(
-    `SELECT DISTINCT completed_date FROM habit_logs WHERE habit_id = ? ORDER BY completed_date ASC`
-  ).all(habitId).map(r => r.completed_date);
+async function habitBestStreak(habitId) {
+  const { rows } = await query(
+    `SELECT DISTINCT completed_date FROM habit_logs WHERE habit_id = $1 ORDER BY completed_date ASC`,
+    [habitId]
+  );
+  const dates = rows.map(r => r.completed_date);
   let best = 0, cur = 0, prev = null;
   for (const date of dates) {
     if (prev) {
@@ -55,23 +58,23 @@ function habitBestStreak(habitId) {
 }
 
 // ── GET / ─────────────────────────────────────────────────────────────────────
-router.get('/', (req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
     const userId = req.user.id;
     const since = new Date();
     since.setDate(since.getDate() - 29);
     const sinceStr = since.toISOString().slice(0, 10);
 
-    const dailyXp = db.prepare(`
-      SELECT completed_date as date, SUM(xp_earned) as xp, COUNT(*) as completions
-      FROM habit_logs WHERE user_id = ? AND completed_date >= ?
+    const { rows: dailyXpRaw } = await query(`
+      SELECT completed_date as date, SUM(xp_earned)::int as xp, COUNT(*)::int as completions
+      FROM habit_logs WHERE user_id = $1 AND completed_date >= $2
       GROUP BY completed_date ORDER BY completed_date ASC
-    `).all(userId, sinceStr);
+    `, [userId, sinceStr]);
 
-    const dayOfWeek = db.prepare(`
-      SELECT CAST(strftime('%w', completed_date) AS INTEGER) as dow, COUNT(*) as count
-      FROM habit_logs WHERE user_id = ? GROUP BY dow ORDER BY dow ASC
-    `).all(userId);
+    const { rows: dayOfWeekRaw } = await query(`
+      SELECT EXTRACT(DOW FROM completed_date::DATE)::INTEGER as dow, COUNT(*)::int as count
+      FROM habit_logs WHERE user_id = $1 GROUP BY dow ORDER BY dow ASC
+    `, [userId]);
 
     const today = new Date();
     const thisWeekStart = new Date(today);
@@ -81,44 +84,46 @@ router.get('/', (req, res, next) => {
     lastWeekStart.setDate(lastWeekStart.getDate() - 7);
     const lastWeekStr = lastWeekStart.toISOString().slice(0, 10);
 
-    const thisWeek = db.prepare(`
-      SELECT COALESCE(SUM(xp_earned), 0) as xp, COUNT(*) as completions
-      FROM habit_logs WHERE user_id = ? AND completed_date >= ?
-    `).get(userId, thisWeekStr);
+    const { rows: [thisWeek] } = await query(`
+      SELECT COALESCE(SUM(xp_earned), 0)::int as xp, COUNT(*)::int as completions
+      FROM habit_logs WHERE user_id = $1 AND completed_date >= $2
+    `, [userId, thisWeekStr]);
 
-    const lastWeek = db.prepare(`
-      SELECT COALESCE(SUM(xp_earned), 0) as xp, COUNT(*) as completions
-      FROM habit_logs WHERE user_id = ? AND completed_date >= ? AND completed_date < ?
-    `).get(userId, lastWeekStr, thisWeekStr);
+    const { rows: [lastWeek] } = await query(`
+      SELECT COALESCE(SUM(xp_earned), 0)::int as xp, COUNT(*)::int as completions
+      FROM habit_logs WHERE user_id = $1 AND completed_date >= $2 AND completed_date < $3
+    `, [userId, lastWeekStr, thisWeekStr]);
 
-    // Per-habit stats
-    const habitRows = db.prepare(
-      `SELECT id, name, color, icon FROM habits WHERE user_id = ? AND is_active = 1`
-    ).all(userId);
+    const { rows: habitRows } = await query(
+      `SELECT id, name, color, icon FROM habits WHERE user_id = $1 AND is_active = 1`,
+      [userId]
+    );
 
-    const habits = habitRows.map(h => {
-      const all = db.prepare(
-        `SELECT COUNT(*) as c, COALESCE(SUM(xp_earned), 0) as xp FROM habit_logs WHERE habit_id = ?`
-      ).get(h.id);
-      const last30 = db.prepare(
-        `SELECT COUNT(*) as c FROM habit_logs WHERE habit_id = ? AND completed_date >= ?`
-      ).get(h.id, sinceStr);
+    const habits = await Promise.all(habitRows.map(async h => {
+      const { rows: [all] } = await query(
+        `SELECT COUNT(*)::int as c, COALESCE(SUM(xp_earned), 0)::int as xp FROM habit_logs WHERE habit_id = $1`,
+        [h.id]
+      );
+      const { rows: [last30] } = await query(
+        `SELECT COUNT(*)::int as c FROM habit_logs WHERE habit_id = $1 AND completed_date >= $2`,
+        [h.id, sinceStr]
+      );
       return {
         id: h.id, name: h.name, color: h.color, icon: h.icon,
-        total_completions: Number(all.c),
-        total_xp:          Number(all.xp),
-        completions_30d:   Number(last30.c),
-        completion_rate_30d: Math.round((Number(last30.c) / 30) * 100),
-        current_streak:    habitCurrentStreak(h.id),
-        best_streak:       habitBestStreak(h.id),
+        total_completions:    Number(all.c),
+        total_xp:             Number(all.xp),
+        completions_30d:      Number(last30.c),
+        completion_rate_30d:  Math.round((Number(last30.c) / 30) * 100),
+        current_streak:       await habitCurrentStreak(h.id),
+        best_streak:          await habitBestStreak(h.id),
       };
-    });
+    }));
 
     res.json({
-      daily_xp:   dailyXp.map(r => ({ ...r, xp: Number(r.xp), completions: Number(r.completions) })),
-      day_of_week: dayOfWeek.map(r => ({ ...r, count: Number(r.count) })),
-      this_week:  { xp: Number(thisWeek.xp), completions: Number(thisWeek.completions) },
-      last_week:  { xp: Number(lastWeek.xp), completions: Number(lastWeek.completions) },
+      daily_xp:    dailyXpRaw.map(r => ({ ...r, xp: Number(r.xp), completions: Number(r.completions) })),
+      day_of_week: dayOfWeekRaw.map(r => ({ ...r, count: Number(r.count) })),
+      this_week:   { xp: Number(thisWeek.xp), completions: Number(thisWeek.completions) },
+      last_week:   { xp: Number(lastWeek.xp), completions: Number(lastWeek.completions) },
       habits,
     });
   } catch (err) {
@@ -132,47 +137,77 @@ router.post('/insights', insightsIpLimiter, requireSubscription, async (req, res
     const userId = req.user.id;
     const today  = new Date().toISOString().slice(0, 10);
 
-    // Rate-limit: 3 per day
-    const userRow   = db.prepare('SELECT insights_used_today, insights_last_reset FROM users WHERE id = ?').get(userId);
+    const { rows: [userRow] } = await query(
+      'SELECT insights_used_today, insights_last_reset FROM users WHERE id = $1',
+      [userId]
+    );
     const usedToday = userRow?.insights_last_reset === today ? (userRow?.insights_used_today ?? 0) : 0;
+    if (usedToday >= 3) return res.status(429).json({ error: 'Daily limit reached', remaining: 0 });
 
-    if (usedToday >= 3) {
-      return res.status(429).json({ error: 'Daily limit reached', remaining: 0 });
-    }
-
-    // Gather stats for the prompt
     const sinceStr = new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10);
 
-    const xpRow    = db.prepare(`SELECT COALESCE(SUM(xp_earned),0) as t FROM habit_logs WHERE user_id=?`).get(userId);
+    const { rows: [xpRow] } = await query(
+      `SELECT COALESCE(SUM(xp_earned), 0)::int as t FROM habit_logs WHERE user_id = $1`,
+      [userId]
+    );
     const xp_total = Number(xpRow.t);
     const level    = Math.min(Math.floor(xp_total / 100), 100);
 
-    const allLogs = db.prepare(`SELECT DISTINCT completed_date FROM habit_logs WHERE user_id=? ORDER BY completed_date DESC`).all(userId);
+    const { rows: allLogs } = await query(
+      `SELECT DISTINCT completed_date FROM habit_logs WHERE user_id = $1 ORDER BY completed_date DESC`,
+      [userId]
+    );
     let current_streak = 0, checkDate = today;
     for (const l of allLogs) {
       if (l.completed_date === checkDate) {
         current_streak++;
-        const d = new Date(checkDate); d.setDate(d.getDate() - 1);
+        const d = new Date(checkDate);
+        d.setDate(d.getDate() - 1);
         checkDate = d.toISOString().slice(0, 10);
       } else break;
     }
 
-    const dowRows  = db.prepare(`SELECT CAST(strftime('%w',completed_date) AS INTEGER) as dow, COUNT(*) as c FROM habit_logs WHERE user_id=? GROUP BY dow ORDER BY c DESC`).all(userId);
-    const bestDay  = dowRows[0]   ? DOW_NAMES[dowRows[0].dow]   : 'N/A';
-    const worstDay = dowRows[dowRows.length - 1] ? DOW_NAMES[dowRows[dowRows.length - 1].dow] : 'N/A';
+    const { rows: dowRows } = await query(
+      `SELECT EXTRACT(DOW FROM completed_date::DATE)::INTEGER as dow, COUNT(*)::int as c
+       FROM habit_logs WHERE user_id = $1 GROUP BY dow ORDER BY c DESC`,
+      [userId]
+    );
+    const bestDay  = dowRows[0]                    ? DOW_NAMES[dowRows[0].dow]                    : 'N/A';
+    const worstDay = dowRows[dowRows.length - 1]   ? DOW_NAMES[dowRows[dowRows.length - 1].dow]   : 'N/A';
 
-    const twStr   = new Date(new Date().setDate(new Date().getDate() - new Date().getDay())).toISOString().slice(0, 10);
-    const lwStr   = new Date(new Date(twStr).setDate(new Date(twStr).getDate() - 7)).toISOString().slice(0, 10);
-    const thisWXp = Number(db.prepare(`SELECT COALESCE(SUM(xp_earned),0) as x FROM habit_logs WHERE user_id=? AND completed_date>=?`).get(userId, twStr).x);
-    const lastWXp = Number(db.prepare(`SELECT COALESCE(SUM(xp_earned),0) as x FROM habit_logs WHERE user_id=? AND completed_date>=? AND completed_date<?`).get(userId, lwStr, twStr).x);
+    const twStr = new Date(new Date().setDate(new Date().getDate() - new Date().getDay())).toISOString().slice(0, 10);
+    const lwStr = new Date(new Date(twStr).setDate(new Date(twStr).getDate() - 7)).toISOString().slice(0, 10);
+    const { rows: [twRow] } = await query(
+      `SELECT COALESCE(SUM(xp_earned), 0)::int as x FROM habit_logs WHERE user_id = $1 AND completed_date >= $2`,
+      [userId, twStr]
+    );
+    const { rows: [lwRow] } = await query(
+      `SELECT COALESCE(SUM(xp_earned), 0)::int as x FROM habit_logs WHERE user_id = $1 AND completed_date >= $2 AND completed_date < $3`,
+      [userId, lwStr, twStr]
+    );
+    const thisWXp = Number(twRow.x);
+    const lastWXp = Number(lwRow.x);
 
-    const totalComp = Number(db.prepare(`SELECT COUNT(*) as c FROM habit_logs WHERE user_id=?`).get(userId).c);
-    const habitRows = db.prepare(`SELECT id, name FROM habits WHERE user_id=? AND is_active=1`).all(userId);
-    const habitData = habitRows.map(h => {
-      const c = Number(db.prepare(`SELECT COUNT(*) as c FROM habit_logs WHERE habit_id=? AND completed_date>=?`).get(h.id, sinceStr).c);
-      return { name: h.name, completion_rate_30d: Math.round((c / 30) * 100) };
-    });
-    const avgRate = habitData.length ? Math.round(habitData.reduce((s, h) => s + h.completion_rate_30d, 0) / habitData.length) : 0;
+    const { rows: [totalRow] } = await query(
+      `SELECT COUNT(*)::int as c FROM habit_logs WHERE user_id = $1`,
+      [userId]
+    );
+    const totalComp = Number(totalRow.c);
+
+    const { rows: habitRows } = await query(
+      `SELECT id, name FROM habits WHERE user_id = $1 AND is_active = 1`,
+      [userId]
+    );
+    const habitData = await Promise.all(habitRows.map(async h => {
+      const { rows: [row] } = await query(
+        `SELECT COUNT(*)::int as c FROM habit_logs WHERE habit_id = $1 AND completed_date >= $2`,
+        [h.id, sinceStr]
+      );
+      return { name: h.name, completion_rate_30d: Math.round((Number(row.c) / 30) * 100) };
+    }));
+    const avgRate = habitData.length
+      ? Math.round(habitData.reduce((s, h) => s + h.completion_rate_30d, 0) / habitData.length)
+      : 0;
 
     const stats = {
       level, xp_total, current_streak, total_completions: totalComp,
@@ -190,12 +225,12 @@ router.post('/insights', insightsIpLimiter, requireSubscription, async (req, res
     let apiRes;
     try {
       apiRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key':          process.env.ANTHROPIC_API_KEY,
-        'anthropic-version':  '2023-06-01',
-        'content-type':       'application/json',
-      },
+        method: 'POST',
+        headers: {
+          'x-api-key':         process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'content-type':      'application/json',
+        },
         body: JSON.stringify({
           model:      'claude-haiku-4-5-20251001',
           max_tokens: 500,
@@ -232,7 +267,10 @@ router.post('/insights', insightsIpLimiter, requireSubscription, async (req, res
     }
 
     const newUsed = usedToday + 1;
-    db.prepare('UPDATE users SET insights_used_today=?, insights_last_reset=? WHERE id=?').run(newUsed, today, userId);
+    await query(
+      'UPDATE users SET insights_used_today = $1, insights_last_reset = $2 WHERE id = $3',
+      [newUsed, today, userId]
+    );
 
     res.json({ ...insights, remaining: 3 - newUsed });
   } catch (err) {

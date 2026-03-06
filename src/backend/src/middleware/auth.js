@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import db from '../db.js';
+import { query } from '../db.js';
 
 export function verifyToken(req, res, next) {
   const header = req.headers.authorization;
@@ -17,16 +17,20 @@ export function verifyToken(req, res, next) {
   }
 }
 
-export function requireSubscription(req, res, next) {
-  const sub = db.prepare(
-    `SELECT id FROM subscriptions
-     WHERE user_id = ? AND status = 'active'
-     AND (current_period_end IS NULL OR current_period_end > datetime('now'))
-     LIMIT 1`
-  ).get(req.user.id);
-
-  if (!sub) {
-    return res.status(403).json({ error: 'Active subscription required', code: 'SUBSCRIPTION_REQUIRED' });
+export async function requireSubscription(req, res, next) {
+  try {
+    const { rows: [sub] } = await query(
+      `SELECT id FROM subscriptions
+       WHERE user_id = $1 AND status = 'active'
+       AND (current_period_end IS NULL OR current_period_end > NOW())
+       LIMIT 1`,
+      [req.user.id]
+    );
+    if (!sub) {
+      return res.status(403).json({ error: 'Active subscription required', code: 'SUBSCRIPTION_REQUIRED' });
+    }
+    next();
+  } catch (err) {
+    next(err);
   }
-  next();
 }

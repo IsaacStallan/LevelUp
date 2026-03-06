@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import db from '../db.js';
+import { query } from '../db.js';
 import { verifyToken } from '../middleware/auth.js';
 
 const router = Router();
 router.use(verifyToken);
 
-router.get('/', (req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
     const weekly = req.query.period === 'weekly';
     let rows;
@@ -14,27 +14,27 @@ router.get('/', (req, res, next) => {
       const since = new Date();
       since.setDate(since.getDate() - 7);
       const sinceStr = since.toISOString().slice(0, 10);
-      rows = db.prepare(`
+      ({ rows } = await query(`
         SELECT u.id, u.username, u.equipped_title,
-               COALESCE(SUM(hl.xp_earned), 0) as xp_total,
-               COUNT(hl.id) as completions
+               COALESCE(SUM(hl.xp_earned), 0)::int as xp_total,
+               COUNT(hl.id)::int as completions
         FROM users u
-        LEFT JOIN habit_logs hl ON hl.user_id = u.id AND hl.completed_date >= ?
+        LEFT JOIN habit_logs hl ON hl.user_id = u.id AND hl.completed_date >= $1
         GROUP BY u.id
         ORDER BY xp_total DESC, completions DESC
         LIMIT 50
-      `).all(sinceStr);
+      `, [sinceStr]));
     } else {
-      rows = db.prepare(`
+      ({ rows } = await query(`
         SELECT u.id, u.username, u.equipped_title,
-               COALESCE(SUM(hl.xp_earned), 0) as xp_total,
-               COUNT(hl.id) as completions
+               COALESCE(SUM(hl.xp_earned), 0)::int as xp_total,
+               COUNT(hl.id)::int as completions
         FROM users u
         LEFT JOIN habit_logs hl ON hl.user_id = u.id
         GROUP BY u.id
         ORDER BY xp_total DESC, completions DESC
         LIMIT 50
-      `).all();
+      `));
     }
 
     const data = rows.map((row, i) => ({

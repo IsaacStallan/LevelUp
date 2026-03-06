@@ -1,40 +1,40 @@
 import { Router } from 'express';
-import db from '../db.js';
+import { query } from '../db.js';
 import { verifyToken } from '../middleware/auth.js';
 
 const router = Router();
 router.use(verifyToken);
 
-router.get('/stats', (req, res, next) => {
+router.get('/stats', async (req, res, next) => {
   try {
     const userId = req.user.id;
     const today = new Date().toISOString().slice(0, 10);
 
-    const xpRow = db.prepare(
-      `SELECT COALESCE(SUM(xp_earned), 0) as xp_total FROM habit_logs WHERE user_id = ?`
-    ).get(userId);
-    const xp_total = xpRow.xp_total;
+    const { rows: [xpRow] } = await query(
+      `SELECT COALESCE(SUM(xp_earned), 0)::int as xp_total FROM habit_logs WHERE user_id = $1`,
+      [userId]
+    );
+    const xp_total = Number(xpRow.xp_total);
     const level = Math.min(Math.floor(xp_total / 100), 100);
     const xp_to_next_level = 100 - (xp_total % 100);
 
-    const totalRow = db.prepare(
-      'SELECT COUNT(*) as total FROM habit_logs WHERE user_id = ?'
-    ).get(userId);
+    const { rows: [totalRow] } = await query(
+      'SELECT COUNT(*)::int as total FROM habit_logs WHERE user_id = $1',
+      [userId]
+    );
 
-    const todayRow = db.prepare(
-      `SELECT COUNT(DISTINCT habit_id) as count FROM habit_logs WHERE user_id = ? AND completed_date = ?`
-    ).get(userId, today);
+    const { rows: [todayRow] } = await query(
+      `SELECT COUNT(DISTINCT habit_id)::int as count FROM habit_logs WHERE user_id = $1 AND completed_date = $2`,
+      [userId, today]
+    );
 
-    // Current streak
-    const logs = db.prepare(
-      `SELECT DISTINCT completed_date FROM habit_logs WHERE user_id = ? ORDER BY completed_date DESC`
-    ).all(userId);
+    const { rows: logs } = await query(
+      `SELECT DISTINCT completed_date FROM habit_logs WHERE user_id = $1 ORDER BY completed_date DESC`,
+      [userId]
+    );
 
     let current_streak = 0;
-    let longest_streak = 0;
-    let tempStreak = 0;
     let check = today;
-
     for (const log of logs) {
       if (log.completed_date === check) {
         current_streak++;
@@ -46,18 +46,15 @@ router.get('/stats', (req, res, next) => {
       }
     }
 
-    // Longest streak calculation
-    const allDates = logs.map(l => l.completed_date).reverse();
+    let longest_streak = 0;
+    let tempStreak = 0;
     let prev = null;
+    const allDates = logs.map(l => l.completed_date).reverse();
     for (const date of allDates) {
       if (prev) {
         const prevD = new Date(prev);
         prevD.setDate(prevD.getDate() + 1);
-        if (prevD.toISOString().slice(0, 10) === date) {
-          tempStreak++;
-        } else {
-          tempStreak = 1;
-        }
+        tempStreak = prevD.toISOString().slice(0, 10) === date ? tempStreak + 1 : 1;
       } else {
         tempStreak = 1;
       }
@@ -65,7 +62,10 @@ router.get('/stats', (req, res, next) => {
       prev = date;
     }
 
-    const userRow = db.prepare('SELECT equipped_title, freeze_tokens FROM users WHERE id = ?').get(userId);
+    const { rows: [userRow] } = await query(
+      'SELECT equipped_title, freeze_tokens FROM users WHERE id = $1',
+      [userId]
+    );
 
     res.json({
       xp_total,
@@ -73,8 +73,8 @@ router.get('/stats', (req, res, next) => {
       xp_to_next_level,
       current_streak,
       longest_streak,
-      habits_completed_today: todayRow.count,
-      total_completions: totalRow.total,
+      habits_completed_today: Number(todayRow.count),
+      total_completions: Number(totalRow.total),
       equipped_title: userRow?.equipped_title || '',
       freeze_tokens: userRow?.freeze_tokens ?? 0,
     });
