@@ -23,13 +23,16 @@ app.use(cors({
   credentials: true,
 }));
 
-// Rate limiting
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-}));
+// Rate limiting helpers
+const limiterDefaults = { standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests, slow down' } };
+
+// Global: 100 req / 15 min per IP
+app.use(rateLimit({ ...limiterDefaults, windowMs: 15 * 60 * 1000, max: 100 }));
+
+// Auth: 10 req / 15 min per IP — brute-force protection
+const authLimiter = rateLimit({ ...limiterDefaults, windowMs: 15 * 60 * 1000, max: 10 });
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/login',    authLimiter);
 
 // Body parsing — raw for webhook signature verification
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));

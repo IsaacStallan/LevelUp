@@ -7,7 +7,19 @@
       "Bash(T=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJ0ZXN0ZXJAdGVzdC5jb20iLCJpYXQiOjE3NzI3MTA3NzMsImV4cCI6MTc3MzMxNTU3M30.oeEr3_2ruHsDarpsySjfSPMWJqq-1ag13tsTUUgbHZA\"\ncurl -s -H \"Authorization: Bearer $T\" http://localhost:3001/api/gamification/stats)",
       "Bash(T=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJ0ZXN0ZXJAdGVzdC5jb20iLCJpYXQiOjE3NzI3MTA3NzMsImV4cCI6MTc3MzMxNTU3M30.oeEr3_2ruHsDarpsySjfSPMWJqq-1ag13tsTUUgbHZA\"\ncurl -s -H \"Authorization: Bearer $T\" http://localhost:3001/api/titles)",
       "Bash(T=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJ0ZXN0ZXJAdGVzdC5jb20iLCJpYXQiOjE3NzI3MTA3NzMsImV4cCI6MTc3MzMxNTU3M30.oeEr3_2ruHsDarpsySjfSPMWJqq-1ag13tsTUUgbHZA\"\ncurl -s -H \"Authorization: Bearer $T\" http://localhost:3001/api/analytics\ncurl -s -H \"Authorization: Bearer $T\" http://localhost:3001/api/streaks/tokens)",
-      "Bash(cd /Users/isaacstallan/gamify-life/src/frontend && npm run build 2>&1 | tail -20)"
+      "Bash(cd /Users/isaacstallan/gamify-life/src/frontend && npm run build 2>&1 | tail -20)",
+      "Bash(curl -s -X POST http://localhost:3001/api/auth/register \\\\\n  -H \"Content-Type: application/json\" \\\\\n  -d '{\"email\":\"dev@test.com\",\"password\":\"Test1234!\",\"username\":\"DevUser\"}')",
+      "Bash(curl -s -X POST http://localhost:3001/api/auth/register \\\\\n  -H 'Content-Type: application/json' \\\\\n  --data-raw '{\"email\":\"dev@test.com\",\"password\":\"Test1234\",\"username\":\"DevUser\"}')",
+      "Bash(T=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MiwiZW1haWwiOiJkZXZAdGVzdC5jb20iLCJpYXQiOjE3NzI3NTY3OTYsImV4cCI6MTc3MzM2MTU5Nn0.xS8FivohJQFuSeICwuI76MwmQ5F6CXP2ZfMRw6u3lME\"\n\necho \"=== GET /analytics ===\"\ncurl -s -H \"Authorization: Bearer $T\" http://localhost:3001/api/analytics\n\necho \"\"\necho \"=== POST /insights \\(no sub, expect 403\\) ===\"\ncurl -s -X POST -H \"Authorization: Bearer $T\" http://localhost:3001/api/analytics/insights)",
+      "Bash(cd /Users/isaacstallan/gamify-life/src/frontend && npm run build 2>&1 | tail -12)",
+      "Bash(npm run build 2>&1 | tail -6)",
+      "Bash(T=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MiwiZW1haWwiOiJkZXZAdGVzdC5jb20iLCJpYXQiOjE3NzI3NTY3OTYsImV4cCI6MTc3MzM2MTU5Nn0.xS8FivohJQFuSeICwuI76MwmQ5F6CXP2ZfMRw6u3lME\"\ncurl -s -X POST -H \"Authorization: Bearer $T\" http://localhost:3001/api/analytics/insights 2>&1)",
+      "Bash(ls -la /Users/isaacstallan/gamify-life/src/backend/.env* 2>/dev/null || echo \"No .env files found\"\ncat /Users/isaacstallan/gamify-life/src/backend/.env 2>/dev/null || echo \".env does not exist\")",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('express-rate-limit:', p.dependencies['express-rate-limit'] || 'NOT INSTALLED'\\)\")",
+      "Bash(pkill -f \"node src/index.js\" 2>/dev/null\ntrue)",
+      "Bash(curl -s -X POST http://localhost:3001/api/auth/register \\\\\n  -H 'Content-Type: application/json' \\\\\n  --data-raw '{\"email\":\"strict@test.com\",\"password\":\"Test1234\",\"username\":\"StrictUser\",\"extraField\":\"hack\"}')",
+      "Bash(curl -s -X POST http://localhost:3001/api/auth/register \\\\\n  -H 'Content-Type: application/json' \\\\\n  --data-raw '{\"email\":\"long2@test.com\",\"password\":\"Test1234\",\"username\":\"ThisUsernameIsWayTooLongForSure123\"}')",
+      "Bash(curl -s -X POST http://localhost:3001/api/auth/register \\\\\n  -H 'Content-Type: application/json' \\\\\n  --data-raw '{\"email\":\"valid@test.com\",\"password\":\"Test1234\",\"username\":\"ValidUser\"}')"
     ]
   },
   "enableAllProjectMcpServers": true,

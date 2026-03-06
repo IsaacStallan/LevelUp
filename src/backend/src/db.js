@@ -72,6 +72,8 @@ db.exec(`
     freeze_tokens INTEGER NOT NULL DEFAULT 3,
     unlocked_titles TEXT NOT NULL DEFAULT '[]',
     equipped_title TEXT NOT NULL DEFAULT '',
+    insights_used_today INTEGER NOT NULL DEFAULT 0,
+    insights_last_reset TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -119,6 +121,8 @@ for (const m of [
   `ALTER TABLE users ADD COLUMN freeze_tokens INTEGER NOT NULL DEFAULT 3`,
   `ALTER TABLE users ADD COLUMN unlocked_titles TEXT NOT NULL DEFAULT '[]'`,
   `ALTER TABLE users ADD COLUMN equipped_title TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE users ADD COLUMN insights_used_today INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE users ADD COLUMN insights_last_reset TEXT NOT NULL DEFAULT ''`,
 ]) {
   try { sqlDb.exec(m); } catch { /* column already exists */ }
 }

@@ -8,15 +8,15 @@ import { verifyToken } from '../middleware/auth.js';
 const router = Router();
 
 const registerSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  username: z.string().min(2).max(32),
-});
+  email:    z.string().email().max(255),
+  password: z.string().min(8, 'Password must be at least 8 characters').max(100, 'Password too long'),
+  username: z.string().min(2, 'Username must be at least 2 characters').max(30, 'Username must be 30 characters or fewer'),
+}).strict();
 
 const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-});
+  email:    z.string().email().max(255),
+  password: z.string().min(1).max(100),
+}).strict();
 
 function signToken(user) {
   return jwt.sign(
