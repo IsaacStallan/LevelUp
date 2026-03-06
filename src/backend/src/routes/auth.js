@@ -8,16 +8,58 @@ import { verifyToken } from '../middleware/auth.js';
 const router = Router();
 
 const registerSchema = z.object({
-  email:    z.string().email().max(255),
+  email:    z.string().trim().email().max(255),
   password: z.string().min(8, 'Password must be at least 8 characters').max(100, 'Password too long'),
-  username: z.string().min(2, 'Username must be at least 2 characters').max(30, 'Username must be 30 characters or fewer'),
+  username: z.string().trim()
+    .min(2, 'Username must be at least 2 characters')
+    .max(30, 'Username must be 30 characters or fewer')
+    .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers and underscores'),
 }).strict();
 
 const loginSchema = z.object({
-  email:    z.string().email().max(255),
+  email:    z.string().trim().email().max(255),
   password: z.string().min(1).max(100),
 }).strict();
 
+// ── Account lockout (in-memory) ───────────────────────────────────────────────
+const loginAttempts = new Map(); // email → { count, lockedUntil, windowStart }
+const MAX_ATTEMPTS  = 5;
+const WINDOW_MS     = 15 * 60 * 1000; // 15 min
+const LOCKOUT_MS    = 30 * 60 * 1000; // 30 min
+
+function checkLockout(email) {
+  const entry = loginAttempts.get(email);
+  if (!entry) return null;
+  if (entry.lockedUntil && Date.now() < entry.lockedUntil) {
+    const remaining = Math.ceil((entry.lockedUntil - Date.now()) / 60000);
+    return `Account locked. Try again in ${remaining} minute${remaining === 1 ? '' : 's'}.`;
+  }
+  return null;
+}
+
+function recordFailedAttempt(email) {
+  const now   = Date.now();
+  const entry = loginAttempts.get(email) || { count: 0, windowStart: now, lockedUntil: null };
+
+  // Reset window if it has expired
+  if (now - entry.windowStart > WINDOW_MS) {
+    entry.count       = 0;
+    entry.windowStart = now;
+    entry.lockedUntil = null;
+  }
+
+  entry.count++;
+  if (entry.count >= MAX_ATTEMPTS) {
+    entry.lockedUntil = now + LOCKOUT_MS;
+  }
+  loginAttempts.set(email, entry);
+}
+
+function clearAttempts(email) {
+  loginAttempts.delete(email);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function signToken(user) {
   return jwt.sign(
     { id: user.id, email: user.email },
@@ -62,6 +104,7 @@ function getUserStats(userId) {
   return { xp_total, level, xp_to_next_level, current_streak: streak, subscription_status: sub ? 'active' : 'inactive' };
 }
 
+// ── Routes ────────────────────────────────────────────────────────────────────
 router.post('/register', (req, res, next) => {
   try {
     const data = registerSchema.parse(req.body);
@@ -87,10 +130,17 @@ router.post('/register', (req, res, next) => {
 router.post('/login', (req, res, next) => {
   try {
     const data = loginSchema.parse(req.body);
+
+    const lockoutMsg = checkLockout(data.email);
+    if (lockoutMsg) return res.status(429).json({ error: lockoutMsg });
+
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(data.email);
     if (!user || !bcrypt.compareSync(data.password, user.password_hash)) {
+      recordFailedAttempt(data.email);
       return res.status(401).json({ error: 'Invalid email or password' });
     }
+
+    clearAttempts(data.email);
 
     const stats = getUserStats(user.id);
     const token = signToken(user);

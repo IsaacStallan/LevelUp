@@ -8,8 +8,8 @@ const router = Router();
 router.use(verifyToken);
 
 const habitSchema = z.object({
-  name: z.string().min(1).max(100),
-  description: z.string().max(300).optional().default(''),
+  name: z.string().trim().min(1, 'Name cannot be blank').max(100),
+  description: z.string().trim().max(300).optional().default(''),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().default('#7c3aed'),
   icon: z.string().max(10).optional().default('✅'),
 });

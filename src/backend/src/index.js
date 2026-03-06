@@ -13,17 +13,53 @@ import analyticsRoutes from './routes/analytics.js';
 import streakRoutes from './routes/streaks.js';
 import titleRoutes from './routes/titles.js';
 
+// ── Startup environment validation ────────────────────────────────────────────
+if (!process.env.JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET is not set. Add it to .env and restart.');
+  process.exit(1);
+}
+if (process.env.JWT_SECRET.length < 32) {
+  console.error('FATAL: JWT_SECRET must be at least 32 characters. Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+  process.exit(1);
+}
+if (!process.env.ANTHROPIC_API_KEY) {
+  console.warn('WARNING: ANTHROPIC_API_KEY is not set — AI insights endpoint will return 500.');
+}
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Security middleware
-app.use(helmet());
+// ── Security headers ──────────────────────────────────────────────────────────
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc:  ["'self'"],
+      scriptSrc:   ["'self'"],
+      styleSrc:    ["'self'", "'unsafe-inline'"],
+      imgSrc:      ["'self'", 'data:'],
+      connectSrc:  ["'self'"],
+      fontSrc:     ["'self'"],
+      objectSrc:   ["'none'"],
+      frameSrc:    ["'none'"],
+    },
+  },
+  hsts: { maxAge: 31536000, includeSubDomains: true },
+  frameguard: { action: 'deny' },
+  noSniff: true,
+}));
+
+// X-XSS-Protection (not included in modern Helmet, add manually)
+app.use((_req, res, next) => {
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
+
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true,
 }));
 
-// Rate limiting helpers
+// ── Rate limiting ─────────────────────────────────────────────────────────────
 const limiterDefaults = { standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests, slow down' } };
 
 // Global: 100 req / 15 min per IP
@@ -34,11 +70,30 @@ const authLimiter = rateLimit({ ...limiterDefaults, windowMs: 15 * 60 * 1000, ma
 app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/login',    authLimiter);
 
-// Body parsing — raw for webhook signature verification
+// ── Body parsing ──────────────────────────────────────────────────────────────
+// Raw for webhook signature verification; JSON for everything else (10 kb limit)
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
-app.use(express.json());
+app.use(express.json({ limit: '10kb' }));
 
-// Routes
+// ── SQL injection pattern detection ──────────────────────────────────────────
+const SQL_PATTERNS = /--|\/\*|\*\/|xp_/i;
+
+function containsSqlInjection(value) {
+  if (typeof value === 'string') return SQL_PATTERNS.test(value);
+  if (typeof value === 'object' && value !== null) {
+    return Object.values(value).some(containsSqlInjection);
+  }
+  return false;
+}
+
+app.use((req, res, next) => {
+  if (req.body && containsSqlInjection(req.body)) {
+    return res.status(400).json({ error: 'Invalid characters in request' });
+  }
+  next();
+});
+
+// ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/habits', habitRoutes);
 app.use('/api/gamification', gamificationRoutes);
