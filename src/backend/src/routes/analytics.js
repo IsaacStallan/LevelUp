@@ -127,7 +127,7 @@ router.get('/', (req, res, next) => {
 });
 
 // ── POST /insights ─────────────────────────────────────────────────────────────
-router.post('/insights', insightsIpLimiter, async (req, res, next) => {
+router.post('/insights', insightsIpLimiter, requireSubscription, async (req, res, next) => {
   try {
     const userId = req.user.id;
     const today  = new Date().toISOString().slice(0, 10);
