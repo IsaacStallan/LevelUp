@@ -7,3 +7,4 @@ src/backend/data/
 dist/
 src/backend/.env
 .env
+.env
