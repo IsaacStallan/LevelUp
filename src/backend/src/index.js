@@ -33,6 +33,30 @@ if (!process.env.ANTHROPIC_API_KEY) {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// ── CORS — must be first so preflight OPTIONS never hits rate limiting or helmet ──
+const allowedOrigins = [
+  'https://vivify.au',
+  'https://www.vivify.au',
+  'https://enchanting-pika-203705.netlify.app',
+  'http://localhost:5173',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+};
+
+// Handle preflight OPTIONS for every route before any other middleware
+app.options('*', cors(corsOptions));
+app.use(cors(corsOptions));
+
 // ── Security headers ──────────────────────────────────────────────────────────
 app.use(helmet({
   contentSecurityPolicy: {
@@ -47,6 +71,8 @@ app.use(helmet({
       frameSrc:    ["'none'"],
     },
   },
+  // Must be cross-origin or false — same-origin (helmet default) blocks API responses
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
   hsts: { maxAge: 31536000, includeSubDomains: true },
   frameguard: { action: 'deny' },
   noSniff: true,
@@ -57,25 +83,6 @@ app.use((_req, res, next) => {
   res.setHeader('X-XSS-Protection', '1; mode=block');
   next();
 });
-
-const allowedOrigins = [
-  'https://vivify.au',
-  'https://www.vivify.au',
-  'https://enchanting-pika-203705.netlify.app',
-  'http://localhost:5173',
-  process.env.FRONTEND_URL,
-].filter(Boolean);
-
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-}));
 
 // ── Rate limiting ─────────────────────────────────────────────────────────────
 const limiterDefaults = { standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests, slow down' } };
