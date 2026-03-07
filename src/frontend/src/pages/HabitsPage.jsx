@@ -4,6 +4,7 @@ import client from '../api/client.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import HabitCard from '../components/HabitCard.jsx';
 import NavHeader from '../components/NavHeader.jsx';
+import ModeText from '../components/ModeText.jsx';
 
 const PRESET_COLORS = ['#7c3aed', '#2563eb', '#16a34a', '#dc2626', '#ea580c', '#0891b2'];
 const PRESET_ICONS  = ['✅', '💪', '📚', '🧘', '🏃', '💧', '🎯', '🌿'];
@@ -77,7 +78,7 @@ export default function HabitsPage() {
       <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4">
         {/* Page header */}
         <div className="flex items-center justify-between">
-          <h1 className="text-lg sm:text-xl font-bold text-white">Your Habits</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-white"><ModeText id="habits.page.title" /></h1>
           {!showForm && (
             <button
               onClick={() => setShowForm(true)}
@@ -92,7 +93,7 @@ export default function HabitsPage() {
         {showForm && (
           <div id="habit-form" className="bg-gray-900 rounded-2xl border border-gray-800 p-4 sm:p-5">
             <h2 className="text-sm font-semibold text-gray-300 mb-4">
-              {editingId ? 'Edit Habit' : 'New Habit'}
+              {editingId ? <ModeText id="habits.form.edit" /> : <ModeText id="habits.form.new" />}
             </h2>
             {error && (
               <div className="bg-red-900/30 border border-red-800 text-red-400 text-sm rounded-lg px-3 py-2 mb-3">
@@ -159,7 +160,7 @@ export default function HabitsPage() {
                   type="submit"
                   className="flex-1 sm:flex-none bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
                 >
-                  {editingId ? 'Save Changes' : 'Create Habit'}
+                  {editingId ? 'Save Changes' : <ModeText id="habits.create.btn" />}
                 </button>
                 <button
                   type="button"
@@ -178,7 +179,7 @@ export default function HabitsPage() {
           <div className="text-center text-gray-500 py-8">Loading habits…</div>
         ) : habits.length === 0 ? (
           <div className="bg-gray-900 rounded-xl border border-gray-800 border-dashed p-8 text-center">
-            <p className="text-gray-500 text-sm sm:text-base">No habits yet. Add your first one above!</p>
+            <p className="text-gray-500 text-sm sm:text-base"><ModeText id="habits.empty" /></p>
           </div>
         ) : (
           <div className="space-y-2">

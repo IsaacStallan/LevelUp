@@ -157,4 +157,16 @@ router.get('/me', verifyToken, async (req, res, next) => {
   }
 });
 
+router.patch('/mode', verifyToken, async (req, res, next) => {
+  try {
+    const { mode } = req.body;
+    if (mode !== 'LIGHT' && mode !== 'SHADOW') {
+      return res.status(400).json({ error: 'Invalid mode' });
+    }
+    res.json({ mode });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

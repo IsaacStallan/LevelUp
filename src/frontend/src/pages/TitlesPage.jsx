@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import client from '../api/client.js';
 import NavHeader from '../components/NavHeader.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import ModeText from '../components/ModeText.jsx';
 
 const TITLE_ICONS = {
   first_step:     '👣',
@@ -62,7 +63,7 @@ export default function TitlesPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg sm:text-xl font-bold text-white">🏅 Titles</h1>
+            <h1 className="text-lg sm:text-xl font-bold text-white"><ModeText id="titles.page.title" /></h1>
             {!loading && (
               <p className="text-xs text-gray-500 mt-0.5">{unlockedCount} / {titles.length} unlocked</p>
             )}

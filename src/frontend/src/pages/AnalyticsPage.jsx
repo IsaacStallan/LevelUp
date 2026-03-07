@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import client from '../api/client.js';
 import NavHeader from '../components/NavHeader.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import ModeText from '../components/ModeText.jsx';
 
 const DOW_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const CIRC = 2 * Math.PI * 54; // ≈ 339
@@ -187,7 +188,7 @@ export default function AnalyticsPage() {
       <NavHeader level={user?.level ?? 0} />
 
       <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4">
-        <h1 className="text-lg sm:text-xl font-bold text-white">📊 Analytics</h1>
+        <h1 className="text-lg sm:text-xl font-bold text-white"><ModeText id="analytics.title" /></h1>
 
         {loading ? (
           <div className="space-y-3">

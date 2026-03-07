@@ -1,6 +1,7 @@
 import { Fragment } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
+import { ModeProvider } from './contexts/ModeContext.jsx';
 import BackgroundScene from './components/BackgroundScene.jsx';
 import LandingPage from './pages/LandingPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
@@ -42,15 +43,17 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <Fragment>
-      <BackgroundScene />
-      <BrowserRouter>
-        <AuthProvider>
-          <div style={{ position: 'relative', zIndex: 2 }}>
-            <AppRoutes />
-          </div>
-        </AuthProvider>
-      </BrowserRouter>
-    </Fragment>
+    <ModeProvider>
+      <Fragment>
+        <BackgroundScene />
+        <BrowserRouter>
+          <AuthProvider>
+            <div style={{ position: 'relative', zIndex: 2 }}>
+              <AppRoutes />
+            </div>
+          </AuthProvider>
+        </BrowserRouter>
+      </Fragment>
+    </ModeProvider>
   );
 }

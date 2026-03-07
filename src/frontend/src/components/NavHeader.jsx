@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import ModeToggle from './ModeToggle.jsx';
+import ModeText from './ModeText.jsx';
 
 function HamburgerIcon() {
   return (
@@ -48,12 +50,13 @@ export default function NavHeader({ level }) {
         {/* Desktop nav — hidden on mobile */}
         <nav className="hidden sm:flex items-center gap-4 text-sm">
           <span className="text-gray-500 max-w-[100px] truncate">{user?.username}</span>
-          <Link to="/dashboard"   className="text-gray-400 hover:text-white transition-colors">Dashboard</Link>
-          <Link to="/habits"      className="text-gray-400 hover:text-white transition-colors">Habits</Link>
-          <Link to="/leaderboard" className="text-gray-400 hover:text-white transition-colors">Board</Link>
-          <Link to="/analytics"   className="text-gray-400 hover:text-white transition-colors">Analytics</Link>
-          <Link to="/titles"      className="text-gray-400 hover:text-white transition-colors">Titles</Link>
+          <Link to="/dashboard"   className="text-gray-400 hover:text-white transition-colors"><ModeText id="nav.dashboard" /></Link>
+          <Link to="/habits"      className="text-gray-400 hover:text-white transition-colors"><ModeText id="nav.habits" /></Link>
+          <Link to="/leaderboard" className="text-gray-400 hover:text-white transition-colors"><ModeText id="nav.leaderboard" /></Link>
+          <Link to="/analytics"   className="text-gray-400 hover:text-white transition-colors"><ModeText id="nav.analytics" /></Link>
+          <Link to="/titles"      className="text-gray-400 hover:text-white transition-colors"><ModeText id="nav.titles" /></Link>
           {!isSubscribed && <Link to="/upgrade" className="text-purple-400 hover:text-purple-300 transition-colors">Upgrade</Link>}
+          <ModeToggle />
           <button onClick={handleLogout} className="text-gray-500 hover:text-red-400 transition-colors">Logout</button>
         </nav>
 
@@ -80,12 +83,11 @@ export default function NavHeader({ level }) {
           {/* Nav links — full-width, 52px touch targets */}
           <nav className="px-2 py-2">
             {[
-              { to: '/dashboard',   icon: '🏠', label: 'Dashboard',       cls: 'text-gray-300'  },
-              { to: '/habits',      icon: '📋', label: 'Habits',          cls: 'text-gray-300'  },
-              { to: '/leaderboard', icon: '🏆', label: 'Leaderboard',     cls: 'text-gray-300'  },
-              { to: '/analytics',   icon: '📊', label: 'Analytics',       cls: 'text-gray-300'  },
-              { to: '/titles',      icon: '🏅', label: 'Titles',          cls: 'text-gray-300'  },
-              ...(!isSubscribed ? [{ to: '/upgrade', icon: '⚡', label: 'Upgrade — $7/mo', cls: 'text-purple-400' }] : []),
+              { to: '/dashboard',   icon: '🏠', id: 'nav.dashboard',  cls: 'text-gray-300'  },
+              { to: '/habits',      icon: '📋', id: 'nav.habits',     cls: 'text-gray-300'  },
+              { to: '/leaderboard', icon: '🏆', id: 'nav.leaderboard',cls: 'text-gray-300'  },
+              { to: '/analytics',   icon: '📊', id: 'nav.analytics',  cls: 'text-gray-300'  },
+              { to: '/titles',      icon: '🏅', id: 'nav.titles',     cls: 'text-gray-300'  },
             ].map(item => (
               <Link
                 key={item.to}
@@ -94,9 +96,22 @@ export default function NavHeader({ level }) {
                 className={`flex items-center gap-3 px-3 py-3.5 rounded-xl ${item.cls} hover:bg-gray-800 active:bg-gray-700 transition-colors text-sm font-medium`}
               >
                 <span className="text-base w-6 text-center">{item.icon}</span>
-                {item.label}
+                <ModeText id={item.id} />
               </Link>
             ))}
+            {!isSubscribed && (
+              <Link
+                to="/upgrade"
+                onClick={close}
+                className="flex items-center gap-3 px-3 py-3.5 rounded-xl text-purple-400 hover:bg-gray-800 active:bg-gray-700 transition-colors text-sm font-medium"
+              >
+                <span className="text-base w-6 text-center">⚡</span>
+                Upgrade — $7/mo
+              </Link>
+            )}
+            <div className="px-3 py-2">
+              <ModeToggle />
+            </div>
 
             <button
               onClick={handleLogout}

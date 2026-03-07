@@ -7,6 +7,7 @@ import HabitCard from '../components/HabitCard.jsx';
 import LevelUpOverlay from '../components/LevelUpOverlay.jsx';
 import StageUpOverlay from '../components/StageUpOverlay.jsx';
 import NavHeader from '../components/NavHeader.jsx';
+import ModeText from '../components/ModeText.jsx';
 
 function getCharacter(level) {
   if (level >= 90) return { emoji: '⚡', title: 'Immortal' };
@@ -209,7 +210,7 @@ export default function Dashboard() {
             {/* Today's Habits */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base sm:text-lg font-semibold text-white">Today's Habits</h2>
+                <h2 className="text-base sm:text-lg font-semibold text-white"><ModeText id="dashboard.habits.title" /></h2>
                 <Link to="/habits" className="text-sm text-purple-400 hover:text-purple-300">
                   Manage →
                 </Link>
@@ -217,7 +218,7 @@ export default function Dashboard() {
 
               {habits.length === 0 ? (
                 <div className="bg-gray-900 rounded-xl border border-gray-800 border-dashed p-8 text-center">
-                  <p className="text-gray-500 mb-3 text-sm sm:text-base">No habits yet. Create your first quest!</p>
+                  <p className="text-gray-500 mb-3 text-sm sm:text-base"><ModeText id="dashboard.habits.empty" /></p>
                   <Link
                     to="/habits"
                     className="inline-block bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import client from '../api/client.js';
 import NavHeader from '../components/NavHeader.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import ModeText from '../components/ModeText.jsx';
 
 const MEDALS = { 1: '🥇', 2: '🥈', 3: '🥉' };
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -29,7 +30,7 @@ export default function LeaderboardPage() {
       <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h1 className="text-lg sm:text-xl font-bold text-white">🏆 Leaderboard</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-white"><ModeText id="leaderboard.title" /></h1>
           <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-lg p-1">
             <button
               onClick={() => setPeriod('alltime')}
@@ -37,7 +38,7 @@ export default function LeaderboardPage() {
                 period === 'alltime' ? 'bg-purple-700 text-white' : 'text-gray-400 hover:text-white'
               }`}
             >
-              All-time
+              <ModeText id="leaderboard.alltime" />
             </button>
             <button
               onClick={() => setPeriod('weekly')}
@@ -45,7 +46,7 @@ export default function LeaderboardPage() {
                 period === 'weekly' ? 'bg-purple-700 text-white' : 'text-gray-400 hover:text-white'
               }`}
             >
-              This week
+              <ModeText id="leaderboard.weekly" />
             </button>
           </div>
         </div>

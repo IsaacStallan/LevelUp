@@ -1,4 +1,5 @@
 import { memo, useEffect } from 'react';
+import { useMode } from '../contexts/ModeContext.jsx';
 
 const STYLE_ID = 'bg-scene-styles';
 const SCENE_ID = 'bg-scene';
@@ -17,7 +18,7 @@ const STARS = Array.from({ length: 40 }, (_, i) => {
   };
 });
 
-const ORBS = [
+const LIGHT_ORBS = [
   {
     color:  'rgba(124, 58, 237, 0.75)',
     width:  '800px', height: '800px',
@@ -44,6 +45,33 @@ const ORBS = [
   },
 ];
 
+const SHADOW_ORBS = [
+  {
+    color:  'rgba(153, 27, 27, 0.80)',
+    width:  '800px', height: '800px',
+    top: '-250px', left: '-180px',
+    animationName: 'orb1', animationDuration: '14s', animationDelay: '0s',
+  },
+  {
+    color:  'rgba(127, 29, 29, 0.75)',
+    width:  '700px', height: '650px',
+    top: '-180px', right: '-180px',
+    animationName: 'orb2', animationDuration: '18s', animationDelay: '2s',
+  },
+  {
+    color:  'rgba(185, 28, 28, 0.65)',
+    width:  '600px', height: '600px',
+    top: '40%', left: '-200px',
+    animationName: 'orb3', animationDuration: '12s', animationDelay: '4s',
+  },
+  {
+    color:  'rgba(220, 38, 38, 0.45)',
+    width:  '500px', height: '500px',
+    bottom: '-130px', right: '-120px',
+    animationName: 'orb4', animationDuration: '22s', animationDelay: '7s',
+  },
+];
+
 const CSS = `
   #${SCENE_ID} {
     position: fixed;
@@ -59,6 +87,7 @@ const CSS = `
     filter: blur(90px);
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
+    transition: background 1.2s ease;
   }
   #${SCENE_ID} .star {
     position: absolute;
@@ -67,6 +96,7 @@ const CSS = `
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
     animation-name: star-twinkle;
+    transition: background 0.8s ease;
   }
   #bg-vignette {
     position: fixed;
@@ -113,8 +143,8 @@ function inject() {
     const scene = document.createElement('div');
     scene.id = SCENE_ID;
 
-    // Orbs
-    ORBS.forEach(o => {
+    // Orbs — start with light config; updateOrbs() will fix on mode change
+    LIGHT_ORBS.forEach(o => {
       const div = document.createElement('div');
       div.className = 'orb';
       div.style.width  = o.width;
@@ -155,7 +185,25 @@ function inject() {
   }
 }
 
+function updateOrbs(mode) {
+  const scene = document.getElementById(SCENE_ID);
+  if (!scene) return;
+  const configs = mode === 'SHADOW' ? SHADOW_ORBS : LIGHT_ORBS;
+  scene.querySelectorAll('.orb').forEach((orb, i) => {
+    if (!configs[i]) return;
+    orb.style.background        = `radial-gradient(circle, ${configs[i].color} 0%, transparent 70%)`;
+    orb.style.animationDuration = configs[i].animationDuration;
+    orb.style.animationDelay    = configs[i].animationDelay;
+  });
+  const starColor = mode === 'SHADOW' ? 'rgba(255, 180, 180, 0.75)' : 'white';
+  scene.querySelectorAll('.star').forEach(star => {
+    star.style.background = starColor;
+  });
+}
+
 function BackgroundScene() {
+  const { mode } = useMode();
+
   useEffect(() => {
     inject();
     return () => {
@@ -164,6 +212,10 @@ function BackgroundScene() {
       document.getElementById(STYLE_ID)?.remove();
     };
   }, []);
+
+  useEffect(() => {
+    updateOrbs(mode);
+  }, [mode]);
 
   return null;
 }
