@@ -55,8 +55,8 @@ export default function NavHeader({ level }) {
           <Link to="/leaderboard" className="text-gray-400 hover:text-white transition-colors"><ModeText id="nav.leaderboard" /></Link>
           <Link to="/analytics"   className="text-gray-400 hover:text-white transition-colors"><ModeText id="nav.analytics" /></Link>
           <Link to="/titles"      className="text-gray-400 hover:text-white transition-colors"><ModeText id="nav.titles" /></Link>
-          {!isSubscribed && <Link to="/upgrade" className="text-purple-400 hover:text-purple-300 transition-colors">Upgrade</Link>}
           <ModeToggle />
+          {!isSubscribed && <Link to="/upgrade" className="text-purple-400 hover:text-purple-300 transition-colors">Upgrade</Link>}
           <button onClick={handleLogout} className="text-gray-500 hover:text-red-400 transition-colors">Logout</button>
         </nav>
 
@@ -82,6 +82,10 @@ export default function NavHeader({ level }) {
 
           {/* Nav links — full-width, 52px touch targets */}
           <nav className="px-2 py-2">
+            {/* Mode toggle at top of drawer */}
+            <div className="px-3 py-2 mb-1">
+              <ModeToggle />
+            </div>
             {[
               { to: '/dashboard',   icon: '🏠', id: 'nav.dashboard',  cls: 'text-gray-300'  },
               { to: '/habits',      icon: '📋', id: 'nav.habits',     cls: 'text-gray-300'  },
@@ -109,10 +113,6 @@ export default function NavHeader({ level }) {
                 Upgrade — $7/mo
               </Link>
             )}
-            <div className="px-3 py-2">
-              <ModeToggle />
-            </div>
-
             <button
               onClick={handleLogout}
               className="flex items-center gap-3 w-full px-3 py-3.5 rounded-xl text-red-400 hover:bg-gray-800 active:bg-gray-700 transition-colors text-sm font-medium mt-1 border-t border-gray-800/60 pt-3"

@@ -1,6 +1,39 @@
 import { Router } from 'express';
+import webpush from 'web-push';
 import { query } from '../db.js';
 import { sendStreakRiskEmail } from '../emailService.js';
+
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    `mailto:${process.env.VAPID_EMAIL || 'admin@vivify.au'}`,
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+}
+
+async function sendStreakPush(userId, mode, streak) {
+  const { rows: subs } = await query(
+    'SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = $1',
+    [userId]
+  );
+  if (!subs.length) return;
+
+  const isShadow = mode === 'SHADOW';
+  const payload = JSON.stringify({
+    title: isShadow ? '⚔️ PROTOCOL INCOMPLETE' : '🔥 Streak at risk!',
+    body: isShadow
+      ? 'Your discipline is slipping. Execute before midnight.'
+      : `Complete a habit before midnight to keep your ${streak}-day streak alive.`,
+    url: '/dashboard',
+  });
+
+  await Promise.allSettled(subs.map(sub =>
+    webpush.sendNotification(
+      { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+      payload
+    )
+  ));
+}
 
 const router = Router();
 
@@ -23,11 +56,12 @@ router.get('/streak-check', requireCronSecret, async (req, res, next) => {
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
     // Users who completed a habit yesterday (streak active) but not today,
-    // and haven't been emailed today
+    // and haven't been notified today (email or push)
     const { rows: candidates } = await query(
-      `SELECT u.id, u.email, u.username, u.last_streak_email_sent
+      `SELECT u.id, u.email, u.username, u.mode,
+              u.last_streak_email_sent, u.last_streak_push_sent
        FROM users u
-       WHERE u.last_streak_email_sent != $1
+       WHERE (u.last_streak_email_sent != $1 OR u.last_streak_push_sent != $1)
          AND EXISTS (
            SELECT 1 FROM habit_logs hl
            WHERE hl.user_id = u.id AND hl.completed_date = $2
@@ -63,14 +97,23 @@ router.get('/streak-check', requireCronSecret, async (req, res, next) => {
 
       if (streak > 0) {
         try {
-          await sendStreakRiskEmail(user.email, user.username, streak);
-          await query(
-            'UPDATE users SET last_streak_email_sent = $1 WHERE id = $2',
-            [today, user.id]
-          );
+          const sends = [];
+          if (user.last_streak_email_sent !== today) {
+            sends.push(
+              sendStreakRiskEmail(user.email, user.username, streak)
+                .then(() => query('UPDATE users SET last_streak_email_sent = $1 WHERE id = $2', [today, user.id]))
+            );
+          }
+          if (user.last_streak_push_sent !== today && process.env.VAPID_PUBLIC_KEY) {
+            sends.push(
+              sendStreakPush(user.id, user.mode || 'LIGHT', streak)
+                .then(() => query('UPDATE users SET last_streak_push_sent = $1 WHERE id = $2', [today, user.id]))
+            );
+          }
+          await Promise.allSettled(sends);
           sent++;
-        } catch (emailErr) {
-          errors.push({ userId: user.id, error: emailErr.message });
+        } catch (err) {
+          errors.push({ userId: user.id, error: err.message });
         }
       }
     }

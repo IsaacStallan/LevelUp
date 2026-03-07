@@ -1,46 +1,34 @@
-import { useState } from 'react';
 import { useMode } from '../contexts/ModeContext.jsx';
-import light from '../copy/light.json';
-import shadow from '../copy/shadow.json';
+import { useCRTTransition } from '../hooks/useCRTTransition.js';
 
 export default function ModeToggle() {
-  const { mode, toggleMode } = useMode();
-  const [flashing, setFlashing] = useState(false);
-
-  const label = mode === 'SHADOW' ? shadow['mode.toggle'] : light['mode.toggle'];
+  const { mode, switchMode } = useMode();
+  const { triggerTransition, transitioning } = useCRTTransition();
 
   function handleClick() {
-    setFlashing(true);
-    setTimeout(() => {
-      toggleMode();
-      setFlashing(false);
-    }, 180);
+    const next = mode === 'LIGHT' ? 'SHADOW' : 'LIGHT';
+    triggerTransition(next, () => switchMode(next));
   }
 
+  const isShadow = mode === 'SHADOW';
+
   return (
-    <>
-      {flashing && (
-        <div
-          aria-hidden="true"
-          style={{
-            position: 'fixed', inset: 0, zIndex: 9999,
-            background: mode === 'LIGHT' ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.06)',
-            pointerEvents: 'none',
-            animation: 'mode-flash 0.18s ease-out forwards',
-          }}
-        />
-      )}
-      <button
-        onClick={handleClick}
-        className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-colors ${
-          mode === 'SHADOW'
-            ? 'bg-red-950/50 border-red-800/60 text-red-400 hover:bg-red-950/70'
-            : 'bg-gray-800/60 border-gray-700/60 text-gray-400 hover:text-gray-200'
-        }`}
-        aria-label={`Switch to ${mode === 'LIGHT' ? 'Shadow' : 'Light'} mode`}
-      >
-        {label}
-      </button>
-    </>
+    <button
+      onClick={handleClick}
+      disabled={transitioning}
+      aria-label={`Switch to ${isShadow ? 'Light' : 'Shadow'} mode`}
+      style={isShadow ? { boxShadow: '0 0 10px #00F5FF' } : undefined}
+      className={`
+        text-[11px] font-bold px-3 py-1.5 rounded-full border transition-all select-none
+        ${transitioning
+          ? 'opacity-60 cursor-not-allowed border-gray-600 bg-gray-900 text-gray-400'
+          : isShadow
+            ? 'bg-gray-950 border-cyan-400/70 text-cyan-300 hover:border-cyan-300 hover:text-cyan-200'
+            : 'bg-purple-950/60 border-purple-600/60 text-purple-300 hover:bg-purple-900/60 hover:text-purple-200'
+        }
+      `}
+    >
+      {transitioning ? '⚡' : isShadow ? '☀️ Light' : '⚔️ Shadow'}
+    </button>
   );
 }

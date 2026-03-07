@@ -14,6 +14,7 @@ import AnalyticsPage from './pages/AnalyticsPage.jsx';
 import TitlesPage from './pages/TitlesPage.jsx';
 import PrivacyPage from './pages/PrivacyPage.jsx';
 import TermsPage from './pages/TermsPage.jsx';
+import InstallPrompt from './components/InstallPrompt.jsx';
 
 function PrivateRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -54,6 +55,7 @@ export default function App() {
           <AuthProvider>
             <div style={{ position: 'relative', zIndex: 2 }}>
               <AppRoutes />
+              <InstallPrompt />
             </div>
           </AuthProvider>
         </BrowserRouter>

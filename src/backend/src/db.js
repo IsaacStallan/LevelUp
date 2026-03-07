@@ -73,6 +73,20 @@ export async function initDb() {
   // ── New columns added post-launch (idempotent) ──────────────────────────────
   await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS challenge_xp INTEGER NOT NULL DEFAULT 0`);
   await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_streak_email_sent TEXT NOT NULL DEFAULT ''`);
+  await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS mode TEXT NOT NULL DEFAULT 'LIGHT'`);
+  await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_streak_push_sent TEXT NOT NULL DEFAULT ''`);
+
+  // ── Push subscriptions ──────────────────────────────────────────────────────
+  await query(`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      endpoint TEXT UNIQUE NOT NULL,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
 
   // ── Daily challenges (seeded via route constants — table for completion tracking) ──
   await query(`

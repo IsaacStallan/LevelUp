@@ -15,6 +15,7 @@ import streakRoutes from './routes/streaks.js';
 import titleRoutes from './routes/titles.js';
 import challengeRoutes from './routes/challenges.js';
 import cronRoutes from './routes/cron.js';
+import pushRoutes from './routes/push.js';
 
 // ── Startup environment validation ────────────────────────────────────────────
 if (!process.env.JWT_SECRET) {
@@ -104,6 +105,7 @@ app.use('/api/streaks', streakRoutes);
 app.use('/api/titles', titleRoutes);
 app.use('/api/challenges', challengeRoutes);
 app.use('/api/cron', cronRoutes);
+app.use('/api/push', pushRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 

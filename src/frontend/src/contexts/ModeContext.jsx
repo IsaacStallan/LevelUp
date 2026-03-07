@@ -13,16 +13,13 @@ export function ModeProvider({ children }) {
     try { localStorage.setItem('vivify_mode', mode); } catch {}
   }, [mode]);
 
-  const toggleMode = useCallback(() => {
-    setMode(m => {
-      const next = m === 'LIGHT' ? 'SHADOW' : 'LIGHT';
-      client.patch('/auth/mode', { mode: next }).catch(() => {});
-      return next;
-    });
+  const switchMode = useCallback((next) => {
+    setMode(next);
+    client.patch('/auth/mode', { mode: next }).catch(() => {});
   }, []);
 
   return (
-    <ModeContext.Provider value={{ mode, toggleMode }}>
+    <ModeContext.Provider value={{ mode, switchMode }}>
       {children}
     </ModeContext.Provider>
   );
