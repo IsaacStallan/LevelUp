@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { query } from '../db.js';
 import { verifyToken } from '../middleware/auth.js';
+import { sendWelcomeEmail } from '../emailService.js';
 
 const router = Router();
 
@@ -66,7 +67,10 @@ async function getUserStats(userId) {
     `SELECT COALESCE(SUM(xp_earned), 0)::int as xp_total FROM habit_logs WHERE user_id = $1`,
     [userId]
   );
-  const xp_total = Number(xpRow.xp_total);
+  const { rows: [cxpRow] } = await query(
+    'SELECT COALESCE(challenge_xp, 0) as challenge_xp FROM users WHERE id = $1', [userId]
+  );
+  const xp_total = Number(xpRow.xp_total) + Number(cxpRow?.challenge_xp ?? 0);
   const level = Math.min(Math.floor(xp_total / 100), 100);
   const xp_to_next_level = 100 - (xp_total % 100);
 
@@ -112,6 +116,8 @@ router.post('/register', async (req, res, next) => {
 
     const stats = await getUserStats(user.id);
     const token = signToken(user);
+    // Send welcome email — best effort, non-blocking
+    sendWelcomeEmail(user.email, user.username).catch(() => {});
     res.status(201).json({ token, user: { ...user, ...stats } });
   } catch (err) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors[0].message });

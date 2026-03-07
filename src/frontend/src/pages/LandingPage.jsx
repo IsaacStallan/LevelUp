@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+// Using Link for all internal routes
 
 const FEATURES = [
   {
@@ -188,8 +189,8 @@ export default function LandingPage() {
           <span className="font-semibold text-gray-500">🔥 Vivify</span>
           <div className="flex items-center gap-6">
             <a href="mailto:support@vivify.au" className="hover:text-gray-400 transition-colors">support@vivify.au</a>
-            <a href="/privacy" className="hover:text-gray-400 transition-colors">Privacy Policy</a>
-            <a href="/terms"   className="hover:text-gray-400 transition-colors">Terms of Service</a>
+            <Link to="/privacy" className="hover:text-gray-400 transition-colors">Privacy Policy</Link>
+            <Link to="/terms"   className="hover:text-gray-400 transition-colors">Terms of Service</Link>
           </div>
         </div>
       </footer>

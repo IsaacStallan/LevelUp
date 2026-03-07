@@ -18,5 +18,8 @@
   "leaderboard.weekly": "This week",
   "analytics.title": "📊 Analytics",
   "titles.page.title": "🏅 Titles",
-  "mode.toggle": "⚔️ SHADOW"
+  "mode.toggle": "⚔️ SHADOW",
+  "challenge.section": "Daily Challenge",
+  "challenge.accept": "Accept Challenge",
+  "challenge.completed": "Completed ✓"
 }

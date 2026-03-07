@@ -8,6 +8,7 @@ import LevelUpOverlay from '../components/LevelUpOverlay.jsx';
 import StageUpOverlay from '../components/StageUpOverlay.jsx';
 import NavHeader from '../components/NavHeader.jsx';
 import ModeText from '../components/ModeText.jsx';
+import DailyChallenge from '../components/DailyChallenge.jsx';
 
 function getCharacter(level) {
   if (level >= 90) return { emoji: '⚡', title: 'Immortal' };
@@ -206,6 +207,9 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+
+            {/* Daily Challenge */}
+            <DailyChallenge onComplete={fetchData} />
 
             {/* Today's Habits */}
             <div>

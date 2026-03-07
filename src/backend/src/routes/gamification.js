@@ -63,14 +63,19 @@ router.get('/stats', async (req, res, next) => {
     }
 
     const { rows: [userRow] } = await query(
-      'SELECT equipped_title, freeze_tokens FROM users WHERE id = $1',
+      'SELECT equipped_title, freeze_tokens, challenge_xp FROM users WHERE id = $1',
       [userId]
     );
 
+    const challengeXp  = Number(userRow?.challenge_xp ?? 0);
+    const xp_combined  = xp_total + challengeXp;
+    const levelFinal   = Math.min(Math.floor(xp_combined / 100), 100);
+    const xpToNext     = 100 - (xp_combined % 100);
+
     res.json({
-      xp_total,
-      level,
-      xp_to_next_level,
+      xp_total: xp_combined,
+      level: levelFinal,
+      xp_to_next_level: xpToNext,
       current_streak,
       longest_streak,
       habits_completed_today: Number(todayRow.count),
@@ -78,6 +83,7 @@ router.get('/stats', async (req, res, next) => {
       equipped_title: userRow?.equipped_title || '',
       freeze_tokens: userRow?.freeze_tokens ?? 0,
     });
+    return;
   } catch (err) {
     next(err);
   }

@@ -69,4 +69,21 @@ export async function initDb() {
       UNIQUE(user_id, freeze_date)
     )
   `);
+
+  // ── New columns added post-launch (idempotent) ──────────────────────────────
+  await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS challenge_xp INTEGER NOT NULL DEFAULT 0`);
+  await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_streak_email_sent TEXT NOT NULL DEFAULT ''`);
+
+  // ── Daily challenges (seeded via route constants — table for completion tracking) ──
+  await query(`
+    CREATE TABLE IF NOT EXISTS challenge_completions (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      challenge_date TEXT NOT NULL,
+      day_of_week INTEGER NOT NULL,
+      xp_earned INTEGER NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(user_id, challenge_date)
+    )
+  `);
 }

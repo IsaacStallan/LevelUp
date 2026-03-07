@@ -18,5 +18,8 @@
   "leaderboard.weekly": "This week",
   "analytics.title": "📊 Intel",
   "titles.page.title": "🏅 Titles",
-  "mode.toggle": "☀️ LIGHT"
+  "mode.toggle": "☀️ LIGHT",
+  "challenge.section": "Daily Protocol",
+  "challenge.accept": "Accept Protocol",
+  "challenge.completed": "Protocol Complete ✓"
 }

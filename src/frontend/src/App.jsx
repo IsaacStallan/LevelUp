@@ -12,6 +12,8 @@ import UpgradePage from './pages/UpgradePage.jsx';
 import LeaderboardPage from './pages/LeaderboardPage.jsx';
 import AnalyticsPage from './pages/AnalyticsPage.jsx';
 import TitlesPage from './pages/TitlesPage.jsx';
+import PrivacyPage from './pages/PrivacyPage.jsx';
+import TermsPage from './pages/TermsPage.jsx';
 
 function PrivateRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -36,6 +38,8 @@ function AppRoutes() {
       <Route path="/leaderboard" element={<PrivateRoute><LeaderboardPage /></PrivateRoute>} />
       <Route path="/analytics"   element={<PrivateRoute><AnalyticsPage /></PrivateRoute>} />
       <Route path="/titles"      element={<PrivateRoute><TitlesPage /></PrivateRoute>} />
+      <Route path="/privacy"     element={<PrivacyPage />} />
+      <Route path="/terms"       element={<TermsPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

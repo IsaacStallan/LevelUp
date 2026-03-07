@@ -13,6 +13,8 @@ import leaderboardRoutes from './routes/leaderboard.js';
 import analyticsRoutes from './routes/analytics.js';
 import streakRoutes from './routes/streaks.js';
 import titleRoutes from './routes/titles.js';
+import challengeRoutes from './routes/challenges.js';
+import cronRoutes from './routes/cron.js';
 
 // ── Startup environment validation ────────────────────────────────────────────
 if (!process.env.JWT_SECRET) {
@@ -100,6 +102,8 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/streaks', streakRoutes);
 app.use('/api/titles', titleRoutes);
+app.use('/api/challenges', challengeRoutes);
+app.use('/api/cron', cronRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
