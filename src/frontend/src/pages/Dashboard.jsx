@@ -22,7 +22,7 @@ function getCharacter(level) {
 }
 
 export default function Dashboard() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, isSubscribed } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats]           = useState(null);
   const [habits, setHabits]         = useState([]);
@@ -239,15 +239,17 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* Mobile upgrade nudge — only visible on small screens */}
-            <div className="sm:hidden">
-              <Link
-                to="/upgrade"
-                className="block text-center text-sm text-purple-400 border border-purple-900/50 rounded-xl py-3 bg-purple-950/30 hover:bg-purple-950/50 transition-colors"
-              >
-                ⚡ Upgrade to Pro — $7/mo
-              </Link>
-            </div>
+            {/* Mobile upgrade nudge — only for non-subscribers on small screens */}
+            {!isSubscribed && (
+              <div className="sm:hidden">
+                <Link
+                  to="/upgrade"
+                  className="block text-center text-sm text-purple-400 border border-purple-900/50 rounded-xl py-3 bg-purple-950/30 hover:bg-purple-950/50 transition-colors"
+                >
+                  ⚡ Upgrade to Pro — $7/mo
+                </Link>
+              </div>
+            )}
           </>
         )}
       </main>

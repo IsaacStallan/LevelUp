@@ -22,7 +22,8 @@
       "Bash(curl -s -X POST http://localhost:3001/api/auth/register \\\\\n  -H 'Content-Type: application/json' \\\\\n  --data-raw '{\"email\":\"valid@test.com\",\"password\":\"Test1234\",\"username\":\"ValidUser\"}')",
       "Bash(node --input-type=module <<'EOF'\nimport 'dotenv/config';\nconst jwt = process.env.JWT_SECRET;\nconst anthropic = process.env.ANTHROPIC_API_KEY;\nconsole.log\\('JWT_SECRET length:', jwt ? jwt.length : 'MISSING'\\);\nconsole.log\\('ANTHROPIC_API_KEY:', anthropic ? 'SET' : 'MISSING'\\);\nEOF)",
       "Bash(node --input-type=module --eval \"\nimport './src/index.js';\nsetTimeout\\(\\(\\) => process.exit\\(0\\), 2000\\);\n\" 2>&1 | head -20)",
-      "Bash(npm install 2>&1 | tail -5)"
+      "Bash(npm install 2>&1 | tail -5)",
+      "Bash(cd ~/gamify-life/src/frontend && VITE_API_URL=https://levelup-production-6090.up.railway.app npm run build 2>&1)"
     ]
   },
   "enableAllProjectMcpServers": true,

@@ -20,7 +20,7 @@ export default function LoginPage() {
       const createdAt = new Date(data.user.created_at);
       const hoursOld = (Date.now() - createdAt.getTime()) / 36e5;
       const shouldPromptUpgrade = data.user.subscription_status !== 'active' && hoursOld > 24;
-      navigate(shouldPromptUpgrade ? '/upgrade' : '/');
+      navigate(shouldPromptUpgrade ? '/upgrade' : '/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
     } finally {
@@ -32,8 +32,8 @@ export default function LoginPage() {
     <div className="page-enter min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="text-5xl mb-3 logo-glow">⚡</div>
-          <h1 className="text-3xl font-bold text-white logo-glow">LevelUp</h1>
+          <div className="text-5xl mb-3 logo-glow">🔥</div>
+          <h1 className="text-3xl font-bold text-white logo-glow">Vivify</h1>
           <p className="text-gray-400 mt-1">Sign in to continue your journey</p>
         </div>
 

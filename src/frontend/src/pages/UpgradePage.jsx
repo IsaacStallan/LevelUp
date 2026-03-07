@@ -56,7 +56,7 @@ export default function UpgradePage() {
           <div className="text-center mb-6 sm:mb-8">
             <div className="text-5xl sm:text-6xl mb-3">👑</div>
             <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight">
-              Unlock LevelUp Pro
+              Unlock Vivify Pro
             </h1>
             <p className="text-gray-400 mt-2 text-sm sm:text-base">
               Turn your habits into an epic quest

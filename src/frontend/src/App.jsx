@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import BackgroundScene from './components/BackgroundScene.jsx';
+import LandingPage from './pages/LandingPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 import Dashboard from './pages/Dashboard.jsx';
@@ -16,12 +17,19 @@ function PrivateRoute({ children }) {
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 }
 
+// Redirect authenticated users away from public-only pages (landing, login, register)
+function PublicOnlyRoute({ children }) {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <Navigate to="/dashboard" replace /> : children;
+}
+
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+      <Route path="/"          element={<PublicOnlyRoute><LandingPage /></PublicOnlyRoute>} />
+      <Route path="/login"     element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
+      <Route path="/register"  element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
+      <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
       <Route path="/habits"      element={<PrivateRoute><HabitsPage /></PrivateRoute>} />
       <Route path="/upgrade"     element={<PrivateRoute><UpgradePage /></PrivateRoute>} />
       <Route path="/leaderboard" element={<PrivateRoute><LeaderboardPage /></PrivateRoute>} />
