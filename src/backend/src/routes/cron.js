@@ -3,12 +3,16 @@ import webpush from 'web-push';
 import { query } from '../db.js';
 import { sendStreakRiskEmail } from '../emailService.js';
 
-if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(
-    `mailto:${process.env.VAPID_EMAIL || 'admin@vivify.au'}`,
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
-  );
+try {
+  if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    webpush.setVapidDetails(
+      `mailto:${process.env.VAPID_EMAIL || 'admin@vivify.au'}`,
+      process.env.VAPID_PUBLIC_KEY.trim(),
+      process.env.VAPID_PRIVATE_KEY.trim()
+    );
+  }
+} catch (e) {
+  console.error('web-push VAPID init failed in cron (push notifications disabled):', e.message);
 }
 
 async function sendStreakPush(userId, mode, streak) {

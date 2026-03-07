@@ -6,13 +6,22 @@ import { verifyToken } from '../middleware/auth.js';
 const router = Router();
 router.use(verifyToken);
 
-if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(
-    `mailto:${process.env.VAPID_EMAIL || 'admin@vivify.au'}`,
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
-  );
+function initWebPush() {
+  try {
+    if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+      webpush.setVapidDetails(
+        `mailto:${process.env.VAPID_EMAIL || 'admin@vivify.au'}`,
+        process.env.VAPID_PUBLIC_KEY.trim(),
+        process.env.VAPID_PRIVATE_KEY.trim()
+      );
+      return true;
+    }
+  } catch (e) {
+    console.error('web-push VAPID init failed (push notifications disabled):', e.message);
+  }
+  return false;
 }
+const vapidReady = initWebPush();
 
 // POST /api/push/subscribe
 router.post('/subscribe', async (req, res, next) => {
@@ -48,7 +57,7 @@ router.delete('/unsubscribe', async (req, res, next) => {
 // POST /api/push/test
 router.post('/test', async (req, res, next) => {
   try {
-    if (!process.env.VAPID_PUBLIC_KEY) {
+    if (!vapidReady) {
       return res.status(500).json({ error: 'VAPID keys not configured' });
     }
     const userId = req.user.id;
