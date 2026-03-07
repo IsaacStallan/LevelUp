@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import express from 'express';
-import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { initDb } from './db.js';
@@ -33,29 +32,42 @@ if (!process.env.ANTHROPIC_API_KEY) {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// ── CORS — must be first so preflight OPTIONS never hits rate limiting or helmet ──
-const allowedOrigins = [
-  'https://vivify.au',
-  'https://www.vivify.au',
-  'https://enchanting-pika-203705.netlify.app',
-  'http://localhost:5173',
-  process.env.FRONTEND_URL,
-].filter(Boolean);
+// ── CORS — raw inline middleware, registered before everything else ────────────
+// The cors npm package's callback form can silently swallow errors.
+// This approach sets headers directly and short-circuits OPTIONS before helmet,
+// rate limiting, body parsing, or SQL injection middleware can interfere.
+const ALLOWED_ORIGINS = new Set(
+  [
+    'https://vivify.au',
+    'https://www.vivify.au',
+    'https://enchanting-pika-203705.netlify.app',
+    'http://localhost:5173',
+    process.env.FRONTEND_URL,
+  ].filter(Boolean)
+);
 
-const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+app.use((req, res, next) => {
+  const origin  = req.headers.origin;
+  const allowed = !origin || ALLOWED_ORIGINS.has(origin);
+
+  if (allowed && origin) {
+    res.setHeader('Access-Control-Allow-Origin',      origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Vary',                             'Origin');
+  }
+
+  // Short-circuit OPTIONS preflight — return 204 before any other middleware
+  if (req.method === 'OPTIONS') {
+    if (allowed) {
+      res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Cron-Secret');
+      res.setHeader('Access-Control-Max-Age',       '86400');
     }
-  },
-  credentials: true,
-};
+    return res.sendStatus(204);
+  }
 
-// Handle preflight OPTIONS for every route before any other middleware
-app.options('*', cors(corsOptions));
-app.use(cors(corsOptions));
+  next();
+});
 
 // ── Security headers ──────────────────────────────────────────────────────────
 app.use(helmet({
