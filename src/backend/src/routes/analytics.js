@@ -67,7 +67,7 @@ router.get('/', async (req, res, next) => {
 
     const { rows: dailyXpRaw } = await query(`
       SELECT completed_date as date, SUM(xp_earned)::int as xp, COUNT(*)::int as completions
-      FROM habit_logs WHERE user_id = $1 AND completed_date >= $2
+      FROM habit_logs WHERE user_id = $1 AND completed_date::DATE >= $2::DATE
       GROUP BY completed_date ORDER BY completed_date ASC
     `, [userId, sinceStr]);
 
@@ -86,12 +86,12 @@ router.get('/', async (req, res, next) => {
 
     const { rows: [thisWeek] } = await query(`
       SELECT COALESCE(SUM(xp_earned), 0)::int as xp, COUNT(*)::int as completions
-      FROM habit_logs WHERE user_id = $1 AND completed_date >= $2
+      FROM habit_logs WHERE user_id = $1 AND completed_date::DATE >= $2::DATE
     `, [userId, thisWeekStr]);
 
     const { rows: [lastWeek] } = await query(`
       SELECT COALESCE(SUM(xp_earned), 0)::int as xp, COUNT(*)::int as completions
-      FROM habit_logs WHERE user_id = $1 AND completed_date >= $2 AND completed_date < $3
+      FROM habit_logs WHERE user_id = $1 AND completed_date::DATE >= $2::DATE AND completed_date::DATE < $3::DATE
     `, [userId, lastWeekStr, thisWeekStr]);
 
     const { rows: habitRows } = await query(
@@ -105,7 +105,7 @@ router.get('/', async (req, res, next) => {
         [h.id]
       );
       const { rows: [last30] } = await query(
-        `SELECT COUNT(*)::int as c FROM habit_logs WHERE habit_id = $1 AND completed_date >= $2`,
+        `SELECT COUNT(*)::int as c FROM habit_logs WHERE habit_id = $1 AND completed_date::DATE >= $2::DATE`,
         [h.id, sinceStr]
       );
       return {
@@ -178,11 +178,11 @@ router.post('/insights', insightsIpLimiter, requireSubscription, async (req, res
     const twStr = new Date(new Date().setDate(new Date().getDate() - new Date().getDay())).toISOString().slice(0, 10);
     const lwStr = new Date(new Date(twStr).setDate(new Date(twStr).getDate() - 7)).toISOString().slice(0, 10);
     const { rows: [twRow] } = await query(
-      `SELECT COALESCE(SUM(xp_earned), 0)::int as x FROM habit_logs WHERE user_id = $1 AND completed_date >= $2`,
+      `SELECT COALESCE(SUM(xp_earned), 0)::int as x FROM habit_logs WHERE user_id = $1 AND completed_date::DATE >= $2::DATE`,
       [userId, twStr]
     );
     const { rows: [lwRow] } = await query(
-      `SELECT COALESCE(SUM(xp_earned), 0)::int as x FROM habit_logs WHERE user_id = $1 AND completed_date >= $2 AND completed_date < $3`,
+      `SELECT COALESCE(SUM(xp_earned), 0)::int as x FROM habit_logs WHERE user_id = $1 AND completed_date::DATE >= $2::DATE AND completed_date::DATE < $3::DATE`,
       [userId, lwStr, twStr]
     );
     const thisWXp = Number(twRow.x);
@@ -200,7 +200,7 @@ router.post('/insights', insightsIpLimiter, requireSubscription, async (req, res
     );
     const habitData = await Promise.all(habitRows.map(async h => {
       const { rows: [row] } = await query(
-        `SELECT COUNT(*)::int as c FROM habit_logs WHERE habit_id = $1 AND completed_date >= $2`,
+        `SELECT COUNT(*)::int as c FROM habit_logs WHERE habit_id = $1 AND completed_date::DATE >= $2::DATE`,
         [h.id, sinceStr]
       );
       return { name: h.name, completion_rate_30d: Math.round((Number(row.c) / 30) * 100) };
