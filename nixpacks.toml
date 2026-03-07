@@ -2,7 +2,7 @@
 nixPkgs = ["nodejs_20"]
 
 [phases.install]
-cmds = ["cd src/backend && npm ci --omit=dev"]
+cmds = ["cd src/backend && npm install --omit=dev"]
 
 [phases.build]
 cmds = ["echo 'Backend — no build step'"]
