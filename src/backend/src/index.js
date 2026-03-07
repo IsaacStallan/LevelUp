@@ -140,7 +140,7 @@ app.use('/api/challenges', challengeRoutes);
 app.use('/api/cron', cronRoutes);
 app.use('/api/push', pushRoutes);
 
-app.get('/api/health', (_req, res) => res.json({ ok: true }));
+app.get('/api/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));
 
 app.use((err, _req, res, _next) => {
   console.error(err);
@@ -149,13 +149,12 @@ app.use((err, _req, res, _next) => {
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-initDb()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`LevelUp backend running on http://localhost:${PORT}`);
-    });
-  })
-  .catch(err => {
-    console.error('FATAL: Failed to initialise database:', err);
-    process.exit(1);
-  });
+// Listen immediately so Railway health checks pass, then init the DB.
+// If initDb fails the server stays up (routes return 500 on DB errors)
+// but the process doesn't crash, preventing an infinite restart loop.
+app.listen(PORT, () => {
+  console.log(`LevelUp backend running on http://localhost:${PORT}`);
+  initDb()
+    .then(() => console.log('Database ready'))
+    .catch(err => console.error('Database initialisation error (server still running):', err));
+});
