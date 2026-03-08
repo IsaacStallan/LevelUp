@@ -34,7 +34,7 @@ const PORT = process.env.PORT || 3001;
 // ── Health check — registered FIRST, before all middleware ────────────────────
 // Railway pings this to determine if the deployment is healthy.
 // It must respond even if CORS, rate limiting, or DB is broken.
-app.get('/api/health', (_req, res) => res.json({ ok: true, ts: Date.now(), v: 'v7-0.0.0.0' }));
+app.get('/api/health', (_req, res) => res.json({ ok: true, ts: Date.now(), v: 'v8-retry' }));
 
 // ── CORS — raw inline, second only to health check ────────────────────────────
 const ALLOWED_ORIGINS = new Set(
@@ -138,13 +138,35 @@ app.use((err, _req, res, _next) => {
 });
 
 // ── Global crash guards — keep server alive even on unexpected throws ──────────
-process.on('uncaughtException',  err => console.error('Uncaught exception (server still running):', err));
-process.on('unhandledRejection', err => console.error('Unhandled rejection (server still running):', err));
+process.on('uncaughtException',  err => console.error('[crash-guard] Uncaught exception:', err));
+process.on('unhandledRejection', err => console.error('[crash-guard] Unhandled rejection:', err));
 
-// ── Start — listen first, init DB after ──────────────────────────────────────
+// ── DB init with retry — runs in background after server binds ────────────────
+async function initDbWithRetry(attempts = 3, delayMs = 5000) {
+  for (let i = 1; i <= attempts; i++) {
+    console.log(`[db] Init attempt ${i}/${attempts}...`);
+    try {
+      await initDb();
+      console.log('[db] Database ready.');
+      return;
+    } catch (err) {
+      console.error(`[db] Attempt ${i} failed:`, err.message);
+      if (i < attempts) {
+        console.log(`[db] Retrying in ${delayMs / 1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+  console.error('[db] All init attempts failed. DB routes will return errors until next restart.');
+}
+
+// ── Start — bind port FIRST, then init DB in background ──────────────────────
+console.log(`[startup] Starting LevelUp backend...`);
+console.log(`[startup] PORT=${process.env.PORT || 3001}, NODE_ENV=${process.env.NODE_ENV || 'unset'}`);
+console.log(`[startup] DATABASE_URL present: ${!!process.env.DATABASE_URL}`);
+console.log(`[startup] JWT_SECRET present: ${!!process.env.JWT_SECRET}`);
+
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`LevelUp backend running on port ${PORT}`);
-  initDb()
-    .then(() => console.log('Database ready'))
-    .catch(err => console.error('Database init error (server still running):', err.message));
+  console.log(`[startup] Server bound to 0.0.0.0:${PORT} — accepting requests.`);
+  initDbWithRetry().catch(err => console.error('[db] initDbWithRetry threw unexpectedly:', err));
 });
