@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import { useMode } from '../contexts/ModeContext.jsx';
 import ModeToggle from './ModeToggle.jsx';
 import ModeText from './ModeText.jsx';
 
@@ -20,8 +21,67 @@ function CloseIcon() {
   );
 }
 
+const MORE_ITEMS = [
+  { to: '/battles',  icon: '⚔️', id: 'nav.battles'   },
+  { to: '/analytics',icon: '📊', id: 'nav.analytics'  },
+  { to: '/titles',   icon: '🏅', id: 'nav.titles'     },
+  { to: '/leaderboard', icon: '🏆', id: 'nav.leaderboard' },
+];
+
+function MoreDropdown({ isShadow }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors text-sm select-none"
+        aria-expanded={open}
+        aria-haspopup="true"
+      >
+        {isShadow ? 'Arsenal' : 'More'}
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"
+          style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 150ms' }}>
+          <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {open && (
+        <div
+          className="absolute right-0 top-full mt-2 w-44 rounded-xl border border-white/[0.08] overflow-hidden z-50"
+          style={{ background: 'rgba(10,6,25,0.97)', backdropFilter: 'blur(20px)', boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}
+        >
+          {MORE_ITEMS.map(item => (
+            <Link
+              key={item.to}
+              to={item.to}
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/[0.06] transition-colors"
+            >
+              <span className="text-base w-5 text-center">{item.icon}</span>
+              <ModeText id={item.id} />
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function NavHeader({ level }) {
   const { user, logout, isSubscribed } = useAuth();
+  const { mode } = useMode();
+  const isShadow = mode === 'SHADOW';
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -48,17 +108,24 @@ export default function NavHeader({ level }) {
         </div>
 
         {/* Desktop nav — hidden on mobile */}
-        <nav className="hidden sm:flex items-center gap-4 text-sm">
-          <span className="text-gray-500 max-w-[100px] truncate">{user?.username}</span>
-          <Link to="/dashboard"   className="text-gray-400 hover:text-white transition-colors"><ModeText id="nav.dashboard" /></Link>
-          <Link to="/habits"      className="text-gray-400 hover:text-white transition-colors"><ModeText id="nav.habits" /></Link>
-          <Link to="/leaderboard" className="text-gray-400 hover:text-white transition-colors"><ModeText id="nav.leaderboard" /></Link>
-          <Link to="/battles"     className="text-gray-400 hover:text-white transition-colors"><ModeText id="nav.battles" /></Link>
-          <Link to="/analytics"   className="text-gray-400 hover:text-white transition-colors"><ModeText id="nav.analytics" /></Link>
-          <Link to="/titles"      className="text-gray-400 hover:text-white transition-colors"><ModeText id="nav.titles" /></Link>
+        <nav className="hidden sm:flex items-center gap-5 text-sm">
+          <Link to="/dashboard" className="text-gray-400 hover:text-white transition-colors">
+            <ModeText id="nav.dashboard" />
+          </Link>
+          <Link to="/habits" className="text-gray-400 hover:text-white transition-colors">
+            <ModeText id="nav.habits" />
+          </Link>
+          <Link to="/battles" className="text-gray-400 hover:text-white transition-colors">
+            <ModeText id="nav.battles" />
+          </Link>
+          <MoreDropdown isShadow={isShadow} />
           <ModeToggle />
-          {!isSubscribed && <Link to="/upgrade" className="text-purple-400 hover:text-purple-300 transition-colors">Upgrade</Link>}
-          <button onClick={handleLogout} className="text-gray-500 hover:text-red-400 transition-colors">Logout</button>
+          {!isSubscribed && (
+            <Link to="/upgrade" className="text-purple-400 hover:text-purple-300 transition-colors">Upgrade</Link>
+          )}
+          <button onClick={handleLogout} className="text-gray-500 hover:text-red-400 transition-colors">
+            Logout
+          </button>
         </nav>
 
         {/* Mobile hamburger button — 44×44 touch target */}
@@ -83,23 +150,22 @@ export default function NavHeader({ level }) {
 
           {/* Nav links — full-width, 52px touch targets */}
           <nav className="px-2 py-2">
-            {/* Mode toggle at top of drawer */}
             <div className="px-3 py-2 mb-1">
               <ModeToggle />
             </div>
             {[
-              { to: '/dashboard',   icon: '🏠', id: 'nav.dashboard',  cls: 'text-gray-300'  },
-              { to: '/habits',      icon: '📋', id: 'nav.habits',     cls: 'text-gray-300'  },
-              { to: '/leaderboard', icon: '🏆', id: 'nav.leaderboard',cls: 'text-gray-300'  },
-              { to: '/battles',     icon: '⚔️', id: 'nav.battles',    cls: 'text-gray-300'  },
-              { to: '/analytics',   icon: '📊', id: 'nav.analytics',  cls: 'text-gray-300'  },
-              { to: '/titles',      icon: '🏅', id: 'nav.titles',     cls: 'text-gray-300'  },
+              { to: '/dashboard',   icon: '🏠', id: 'nav.dashboard'   },
+              { to: '/habits',      icon: '📋', id: 'nav.habits'      },
+              { to: '/leaderboard', icon: '🏆', id: 'nav.leaderboard' },
+              { to: '/battles',     icon: '⚔️', id: 'nav.battles'     },
+              { to: '/analytics',   icon: '📊', id: 'nav.analytics'   },
+              { to: '/titles',      icon: '🏅', id: 'nav.titles'      },
             ].map(item => (
               <Link
                 key={item.to}
                 to={item.to}
                 onClick={close}
-                className={`flex items-center gap-3 px-3 py-3.5 rounded-xl ${item.cls} hover:bg-gray-800 active:bg-gray-700 transition-colors text-sm font-medium`}
+                className="flex items-center gap-3 px-3 py-3.5 rounded-xl text-gray-300 hover:bg-gray-800 active:bg-gray-700 transition-colors text-sm font-medium"
               >
                 <span className="text-base w-6 text-center">{item.icon}</span>
                 <ModeText id={item.id} />
