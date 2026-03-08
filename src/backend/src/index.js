@@ -17,14 +17,12 @@ import cronRoutes from './routes/cron.js';
 import pushRoutes from './routes/push.js';
 
 // ── Startup environment validation ────────────────────────────────────────────
+// Warn only — server must bind before Railway considers the deploy healthy.
 const jwtSecret = (process.env.JWT_SECRET || '').trim();
 if (!jwtSecret) {
-  console.error('FATAL: JWT_SECRET is not set. Add it to Railway env vars and redeploy.');
-  process.exit(1);
-}
-if (jwtSecret.length < 32) {
-  console.error('FATAL: JWT_SECRET must be at least 32 characters.');
-  process.exit(1);
+  console.error('WARNING: JWT_SECRET is not set — auth routes will return 500.');
+} else if (jwtSecret.length < 32) {
+  console.error('WARNING: JWT_SECRET must be at least 32 characters — auth routes will return 500.');
 }
 if (!process.env.ANTHROPIC_API_KEY) {
   console.warn('WARNING: ANTHROPIC_API_KEY is not set — AI insights endpoint will return 500.');
