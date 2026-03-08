@@ -34,7 +34,7 @@ const PORT = process.env.PORT || 3001;
 // ── Health check — registered FIRST, before all middleware ────────────────────
 // Railway pings this to determine if the deployment is healthy.
 // It must respond even if CORS, rate limiting, or DB is broken.
-app.get('/api/health', (_req, res) => res.json({ ok: true, ts: Date.now(), v: 'v8-retry' }));
+app.get('/api/health', (_req, res) => res.json({ ok: true, ts: Date.now(), v: 'v9-eaddrinuse-fix' }));
 
 // ── CORS — raw inline, second only to health check ────────────────────────────
 const ALLOWED_ORIGINS = new Set(
@@ -138,8 +138,16 @@ app.use((err, _req, res, _next) => {
 });
 
 // ── Global crash guards — keep server alive even on unexpected throws ──────────
-process.on('uncaughtException',  err => console.error('[crash-guard] Uncaught exception:', err));
-process.on('unhandledRejection', err => console.error('[crash-guard] Unhandled rejection:', err));
+// EADDRINUSE must exit: if port is already in use the server never binds and
+// Railway sees a "successful" (non-crashing) process that never accepts traffic.
+process.on('uncaughtException', err => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[crash-guard] Port ${PORT} already in use — exiting so Railway can restart.`);
+    process.exit(1);
+  }
+  console.error('[crash-guard] Uncaught exception (server still running):', err);
+});
+process.on('unhandledRejection', err => console.error('[crash-guard] Unhandled rejection (server still running):', err));
 
 // ── DB init with retry — runs in background after server binds ────────────────
 async function initDbWithRetry(attempts = 3, delayMs = 5000) {
