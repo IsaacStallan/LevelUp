@@ -12,6 +12,7 @@ import titleRoutes from './routes/titles.js';
 import challengeRoutes from './routes/challenges.js';
 import cronRoutes from './routes/cron.js';
 import pushRoutes from './routes/push.js';
+import battlesRoutes from './routes/battles.js';
 
 const PORT = process.env.PORT || 3001;
 
@@ -56,6 +57,7 @@ app.use('/api/titles', titleRoutes);
 app.use('/api/challenges', challengeRoutes);
 app.use('/api/cron', cronRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/battles', battlesRoutes);
 
 async function initDbWithRetry(attempts = 3, delayMs = 5000) {
   for (let i = 1; i <= attempts; i++) {

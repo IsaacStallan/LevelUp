@@ -100,4 +100,25 @@ export async function initDb() {
       UNIQUE(user_id, challenge_date)
     )
   `);
+
+  // ── Habit Battles ────────────────────────────────────────────────────────────
+  await query(`
+    CREATE TABLE IF NOT EXISTS battles (
+      id SERIAL PRIMARY KEY,
+      challenger_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      opponent_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      challenger_username TEXT NOT NULL,
+      opponent_username TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      habit_category TEXT NOT NULL DEFAULT 'general',
+      duration_days INTEGER NOT NULL DEFAULT 30,
+      challenger_score INTEGER NOT NULL DEFAULT 0,
+      opponent_score INTEGER NOT NULL DEFAULT 0,
+      winner_id INTEGER REFERENCES users(id),
+      invite_token TEXT UNIQUE NOT NULL,
+      starts_at TIMESTAMPTZ,
+      ends_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
 }

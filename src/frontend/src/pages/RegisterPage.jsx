@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import client from '../api/client.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
@@ -9,6 +9,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const battleToken = searchParams.get('battle');
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -17,7 +19,14 @@ export default function RegisterPage() {
     try {
       const { data } = await client.post('/auth/register', form);
       login(data.token, data.user);
-      navigate('/dashboard');
+      if (battleToken) {
+        try {
+          await client.post('/battles/accept', { token: battleToken });
+        } catch { /* battle accept failure shouldn't block registration */ }
+        navigate('/battles');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Registration failed');
     } finally {

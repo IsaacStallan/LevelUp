@@ -53,6 +53,7 @@ export default function NavHeader({ level }) {
           <Link to="/dashboard"   className="text-gray-400 hover:text-white transition-colors"><ModeText id="nav.dashboard" /></Link>
           <Link to="/habits"      className="text-gray-400 hover:text-white transition-colors"><ModeText id="nav.habits" /></Link>
           <Link to="/leaderboard" className="text-gray-400 hover:text-white transition-colors"><ModeText id="nav.leaderboard" /></Link>
+          <Link to="/battles"     className="text-gray-400 hover:text-white transition-colors"><ModeText id="nav.battles" /></Link>
           <Link to="/analytics"   className="text-gray-400 hover:text-white transition-colors"><ModeText id="nav.analytics" /></Link>
           <Link to="/titles"      className="text-gray-400 hover:text-white transition-colors"><ModeText id="nav.titles" /></Link>
           <ModeToggle />
@@ -90,6 +91,7 @@ export default function NavHeader({ level }) {
               { to: '/dashboard',   icon: '🏠', id: 'nav.dashboard',  cls: 'text-gray-300'  },
               { to: '/habits',      icon: '📋', id: 'nav.habits',     cls: 'text-gray-300'  },
               { to: '/leaderboard', icon: '🏆', id: 'nav.leaderboard',cls: 'text-gray-300'  },
+              { to: '/battles',     icon: '⚔️', id: 'nav.battles',    cls: 'text-gray-300'  },
               { to: '/analytics',   icon: '📊', id: 'nav.analytics',  cls: 'text-gray-300'  },
               { to: '/titles',      icon: '🏅', id: 'nav.titles',     cls: 'text-gray-300'  },
             ].map(item => (

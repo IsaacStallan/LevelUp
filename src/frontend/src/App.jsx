@@ -14,6 +14,8 @@ import AnalyticsPage from './pages/AnalyticsPage.jsx';
 import TitlesPage from './pages/TitlesPage.jsx';
 import PrivacyPage from './pages/PrivacyPage.jsx';
 import TermsPage from './pages/TermsPage.jsx';
+import BattlesPage from './pages/BattlesPage.jsx';
+import BattleAcceptPage from './pages/BattleAcceptPage.jsx';
 import InstallPrompt from './components/InstallPrompt.jsx';
 
 function PrivateRoute({ children }) {
@@ -39,6 +41,8 @@ function AppRoutes() {
       <Route path="/leaderboard" element={<PrivateRoute><LeaderboardPage /></PrivateRoute>} />
       <Route path="/analytics"   element={<PrivateRoute><AnalyticsPage /></PrivateRoute>} />
       <Route path="/titles"      element={<PrivateRoute><TitlesPage /></PrivateRoute>} />
+      <Route path="/battles"      element={<PrivateRoute><BattlesPage /></PrivateRoute>} />
+      <Route path="/battle/accept" element={<BattleAcceptPage />} />
       <Route path="/privacy"     element={<PrivacyPage />} />
       <Route path="/terms"       element={<TermsPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />

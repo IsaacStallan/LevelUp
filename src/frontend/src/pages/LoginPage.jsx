@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import client from '../api/client.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
@@ -9,6 +9,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const battleToken = searchParams.get('battle');
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -17,6 +19,13 @@ export default function LoginPage() {
     try {
       const { data } = await client.post('/auth/login', form);
       login(data.token, data.user);
+      if (battleToken) {
+        try {
+          await client.post('/battles/accept', { token: battleToken });
+        } catch { /* non-fatal */ }
+        navigate('/battles');
+        return;
+      }
       const createdAt = new Date(data.user.created_at);
       const hoursOld = (Date.now() - createdAt.getTime()) / 36e5;
       const shouldPromptUpgrade = data.user.subscription_status !== 'active' && hoursOld > 24;

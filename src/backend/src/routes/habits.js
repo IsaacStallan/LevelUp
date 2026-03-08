@@ -140,6 +140,20 @@ router.post('/:id/complete', async (req, res, next) => {
       [habit.id, req.user.id, today, xp]
     );
 
+    // Battle scoring — increment score in any active battles
+    const { rows: activeBattles } = await query(
+      `SELECT * FROM battles WHERE (challenger_id = $1 OR opponent_id = $1)
+       AND status = 'active' AND ends_at > NOW()`,
+      [req.user.id]
+    );
+    for (const battle of activeBattles) {
+      if (battle.challenger_id === req.user.id) {
+        await query('UPDATE battles SET challenger_score = challenger_score + 1 WHERE id = $1', [battle.id]);
+      } else {
+        await query('UPDATE battles SET opponent_score = opponent_score + 1 WHERE id = $1', [battle.id]);
+      }
+    }
+
     const { rows: [xpRow] } = await query(
       'SELECT COALESCE(SUM(xp_earned), 0)::int as total FROM habit_logs WHERE user_id = $1',
       [req.user.id]

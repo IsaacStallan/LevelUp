@@ -122,7 +122,21 @@ router.get('/streak-check', requireCronSecret, async (req, res, next) => {
       }
     }
 
-    res.json({ checked: candidates.length, sent, errors });
+    // Battle completion — close out expired active battles
+    const { rows: expiredBattles } = await query(
+      `SELECT * FROM battles WHERE status = 'active' AND ends_at <= NOW()`
+    );
+    for (const b of expiredBattles) {
+      let winner_id = null;
+      if (b.challenger_score > b.opponent_score) winner_id = b.challenger_id;
+      else if (b.opponent_score > b.challenger_score) winner_id = b.opponent_id;
+      await query(
+        `UPDATE battles SET status = 'completed', winner_id = $1 WHERE id = $2`,
+        [winner_id, b.id]
+      );
+    }
+
+    res.json({ checked: candidates.length, sent, errors, battles_closed: expiredBattles.length });
   } catch (err) {
     next(err);
   }
