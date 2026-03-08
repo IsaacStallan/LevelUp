@@ -34,7 +34,7 @@ const PORT = process.env.PORT || 3001;
 // ── Health check — registered FIRST, before all middleware ────────────────────
 // Railway pings this to determine if the deployment is healthy.
 // It must respond even if CORS, rate limiting, or DB is broken.
-app.get('/api/health', (_req, res) => res.json({ ok: true, ts: Date.now(), v: '85650c9' }));
+app.get('/api/health', (_req, res) => res.json({ ok: true, ts: Date.now(), v: 'v7-0.0.0.0' }));
 
 // ── CORS — raw inline, second only to health check ────────────────────────────
 const ALLOWED_ORIGINS = new Set(
@@ -137,8 +137,12 @@ app.use((err, _req, res, _next) => {
   res.status(status).json({ error: err.message || 'Internal server error' });
 });
 
+// ── Global crash guards — keep server alive even on unexpected throws ──────────
+process.on('uncaughtException',  err => console.error('Uncaught exception (server still running):', err));
+process.on('unhandledRejection', err => console.error('Unhandled rejection (server still running):', err));
+
 // ── Start — listen first, init DB after ──────────────────────────────────────
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`LevelUp backend running on port ${PORT}`);
   initDb()
     .then(() => console.log('Database ready'))
