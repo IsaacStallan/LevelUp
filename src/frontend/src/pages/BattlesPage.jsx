@@ -69,7 +69,7 @@ function BattleCard({ battle, userId, isShadow }) {
         {/* My side */}
         <div className="flex-1 text-center">
           <p className="text-xs text-gray-500 truncate mb-1">{myName} {isWinner && battle.status === 'completed' ? '👑' : '(you)'}</p>
-          <p className={`text-3xl font-bold tabular-nums ${isShadow ? 'text-red-400' : 'text-purple-300'}`}>{myScore}</p>
+          <p className={`text-3xl font-bold tabular-nums ${isShadow ? 'text-red-400' : 'text-purple-300'}`}>{myScore}%</p>
         </div>
 
         {/* VS */}
@@ -83,7 +83,7 @@ function BattleCard({ battle, userId, isShadow }) {
             {theirName || (battle.status === 'pending' ? 'Awaiting…' : '?')}
             {battle.winner_id === (isChallenger ? battle.opponent_id : battle.challenger_id) && battle.status === 'completed' ? ' 👑' : ''}
           </p>
-          <p className="text-3xl font-bold tabular-nums text-gray-400">{theirScore}</p>
+          <p className="text-3xl font-bold tabular-nums text-gray-400">{theirScore}%</p>
         </div>
       </div>
 

@@ -140,17 +140,42 @@ router.post('/:id/complete', async (req, res, next) => {
       [habit.id, req.user.id, today, xp]
     );
 
-    // Battle scoring — increment score in any active battles
+    // Battle scoring — recalculate avg daily completion rate for any active battles
     const { rows: activeBattles } = await query(
       `SELECT * FROM battles WHERE (challenger_id = $1 OR opponent_id = $1)
        AND status = 'active' AND ends_at > NOW()`,
       [req.user.id]
     );
-    for (const battle of activeBattles) {
-      if (battle.challenger_id === req.user.id) {
-        await query('UPDATE battles SET challenger_score = challenger_score + 1 WHERE id = $1', [battle.id]);
-      } else {
-        await query('UPDATE battles SET opponent_score = opponent_score + 1 WHERE id = $1', [battle.id]);
+    if (activeBattles.length > 0) {
+      // Score = average daily completion rate since battle started
+      // daily rate = (distinct habits completed that day / total active habits) * 100
+      const { rows: [scoreRow] } = await query(
+        `WITH daily AS (
+           SELECT hl.completed_date,
+                  COUNT(DISTINCT hl.habit_id)::float AS completed
+           FROM habit_logs hl
+           WHERE hl.user_id = $1
+             AND hl.completed_date >= (
+               SELECT MIN(starts_at)::date FROM battles
+               WHERE (challenger_id = $1 OR opponent_id = $1) AND status = 'active'
+             )
+             AND hl.completed_date <= CURRENT_DATE
+           GROUP BY hl.completed_date
+         ),
+         total AS (
+           SELECT GREATEST(COUNT(*)::float, 1) AS cnt FROM habits WHERE user_id = $1 AND is_active = 1
+         )
+         SELECT COALESCE(ROUND(AVG((daily.completed / total.cnt) * 100))::int, 0) AS score
+         FROM daily, total`,
+        [req.user.id]
+      );
+      const newScore = scoreRow.score;
+      for (const battle of activeBattles) {
+        if (battle.challenger_id === req.user.id) {
+          await query('UPDATE battles SET challenger_score = $1 WHERE id = $2', [newScore, battle.id]);
+        } else {
+          await query('UPDATE battles SET opponent_score = $1 WHERE id = $2', [newScore, battle.id]);
+        }
       }
     }
 

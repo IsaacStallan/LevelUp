@@ -25,34 +25,43 @@ function getCharacter(level) {
 /* ─── Identity Bar ─────────────────────────────────────────────────── */
 function IdentityBar({ character, username, level, streak, xpTotal, rank, equippedTitle }) {
   return (
-    <div className="flex items-center justify-between gap-2 py-1 px-1">
+    <div className="flex items-center justify-between gap-3 py-3 px-1">
       {/* Left: character + name + level */}
-      <div className="flex items-center gap-2 min-w-0">
-        <span className="text-2xl leading-none select-none">{character.emoji}</span>
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span className="text-3xl leading-none select-none">{character.emoji}</span>
         <div className="min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-sm font-bold text-white truncate max-w-[90px]">{username}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-bold text-white truncate max-w-[96px]">{username}</span>
             <span className="text-[10px] bg-purple-900/50 border border-purple-700/50 text-purple-300 px-1.5 py-0.5 rounded-full tabular-nums shrink-0">
               Lv.{level}
             </span>
           </div>
           {equippedTitle && (
-            <p className="text-[10px] text-yellow-400 leading-tight truncate">{equippedTitle}</p>
+            <p className="text-[10px] text-yellow-400 leading-tight truncate mt-0.5">{equippedTitle}</p>
           )}
         </div>
       </div>
 
-      {/* Center: streak */}
-      <div className="flex items-center gap-1 shrink-0">
-        <span className="text-base">🔥</span>
-        <span className="text-sm font-bold text-orange-300 tabular-nums">{streak}</span>
-        <span className="text-[11px] text-gray-500 hidden xs:inline">day streak</span>
+      {/* Center: streak — glowing amber pill */}
+      <div
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full shrink-0 streak-pill"
+        style={{
+          background: 'rgba(251,146,60,0.12)',
+          border: '1px solid rgba(251,146,60,0.35)',
+          boxShadow: streak > 0 ? '0 0 12px rgba(251,146,60,0.25), 0 0 4px rgba(251,146,60,0.1)' : 'none',
+        }}
+      >
+        <span className="text-base leading-none">🔥</span>
+        <span className="text-sm font-black text-amber-300 tabular-nums">{streak}</span>
+        <span className="text-[11px] font-semibold text-amber-500/80">
+          {streak === 1 ? 'day' : 'day streak'}
+        </span>
       </div>
 
       {/* Right: XP + rank */}
       <div className="text-right shrink-0">
         <p className="text-sm font-bold text-yellow-300 tabular-nums">⚡{xpTotal.toLocaleString()}</p>
-        {rank && <p className="text-[10px] text-gray-500">#{rank} globally</p>}
+        {rank && <p className="text-[10px] text-gray-500 mt-0.5">#{rank} globally</p>}
       </div>
     </div>
   );
@@ -68,25 +77,31 @@ function BattleMiniCard({ battle, userId, isShadow }) {
 
   return (
     <div
-      className={`flex-shrink-0 w-48 rounded-2xl border p-3 space-y-2 ${isShadow ? 'battle-card-glow-crimson' : 'battle-card-glow'}`}
-      style={{ background: 'linear-gradient(135deg, rgba(20,10,40,0.92), rgba(8,4,20,0.97))' }}
+      className={`flex-shrink-0 w-60 rounded-2xl border p-4 space-y-3 ${isShadow ? 'battle-card-glow-crimson' : 'battle-card-glow'}`}
+      style={{ background: 'linear-gradient(135deg, rgba(20,10,40,0.94), rgba(8,4,20,0.98))' }}
     >
-      <div className="text-center">
-        <span className="text-xl battle-icon-pulse select-none">⚔️</span>
+      <div className="flex items-center justify-between">
+        <span className="text-2xl battle-icon-pulse select-none">⚔️</span>
+        <span className="text-[10px] text-gray-600 tabular-nums">{remaining}d left</span>
       </div>
-      <p className="text-[11px] text-gray-400 text-center truncate">vs {theirName ?? '?'}</p>
-      <div className="flex items-center gap-1">
-        <div className="flex-1 text-center">
-          <p className={`text-2xl font-black tabular-nums ${isShadow ? 'text-red-400' : 'text-purple-300'}`}>{myScore}</p>
-          <p className="text-[9px] text-gray-600">you</p>
+      <p className="text-xs text-gray-400 truncate">vs <span className="text-gray-200 font-semibold">{theirName ?? '?'}</span></p>
+      <div className="flex items-end justify-between gap-2">
+        <div className="text-left">
+          <p className={`text-4xl font-black tabular-nums leading-none ${isShadow ? 'text-red-400' : 'text-purple-300'}`}>
+            {myScore}<span className="text-xl">%</span>
+          </p>
+          <p className="text-[10px] text-gray-600 mt-1">you</p>
         </div>
-        <span className="text-[10px] text-gray-700 font-bold">VS</span>
-        <div className="flex-1 text-center">
-          <p className="text-2xl font-black tabular-nums text-gray-400">{theirScore}</p>
-          <p className="text-[9px] text-gray-600">them</p>
+        <div className="text-center pb-5">
+          <span className="text-xs text-gray-700 font-black tracking-widest">VS</span>
+        </div>
+        <div className="text-right">
+          <p className="text-4xl font-black tabular-nums text-gray-400 leading-none">
+            {theirScore}<span className="text-xl">%</span>
+          </p>
+          <p className="text-[10px] text-gray-600 mt-1">them</p>
         </div>
       </div>
-      <p className="text-[10px] text-gray-600 text-center">{remaining}d left</p>
     </div>
   );
 }
@@ -98,18 +113,18 @@ function BattlesSection({ battles, userId, isShadow }) {
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-2.5">
-        <h2 className={`text-[10px] font-bold uppercase tracking-widest ${accentClass}`}>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className={`text-xs font-bold uppercase tracking-widest ${accentClass}`}>
           {isShadow ? 'ACTIVE DUELS' : 'Active Battles'}
         </h2>
-        <Link to="/battles" className="text-[11px] text-gray-600 hover:text-gray-400 transition-colors">
+        <Link to="/battles" className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
           View all →
         </Link>
       </div>
 
       {active.length > 0 ? (
         <>
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-3 px-3 scrollbar-none">
+          <div className="flex gap-4 overflow-x-auto pb-3 -mx-4 sm:-mx-8 px-4 sm:px-8 scrollbar-none">
             {active.map(b => (
               <BattleMiniCard key={b.id} battle={b} userId={userId} isShadow={isShadow} />
             ))}
@@ -160,16 +175,16 @@ function MissionSection({ habits, onComplete, isShadow }) {
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-2.5">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <h2 className={`text-[10px] font-bold uppercase tracking-widest ${accentClass}`}>
+          <h2 className={`text-xs font-bold uppercase tracking-widest ${accentClass}`}>
             {isShadow ? 'DAILY PROTOCOL' : "Today's Mission"}
           </h2>
           {total > 0 && (
-            <span className="text-[10px] text-gray-600 tabular-nums">{completed}/{total}</span>
+            <span className="text-xs text-gray-600 tabular-nums">{completed}/{total}</span>
           )}
         </div>
-        <Link to="/habits" className="text-[11px] text-gray-600 hover:text-gray-400 transition-colors">
+        <Link to="/habits" className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
           Manage →
         </Link>
       </div>
@@ -224,7 +239,7 @@ function StandingSection({ rank, onChallengeComplete, isShadow }) {
   const accentClass = isShadow ? 'text-red-500' : 'text-purple-400';
   return (
     <section>
-      <h2 className={`text-[10px] font-bold uppercase tracking-widest mb-2.5 ${accentClass}`}>
+      <h2 className={`text-xs font-bold uppercase tracking-widest mb-4 ${accentClass}`}>
         Standing
       </h2>
       <div className="grid grid-cols-2 gap-3 items-start">
@@ -368,7 +383,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <main className="relative z-10 max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-5">
+      <main className="relative z-10 max-w-2xl mx-auto px-4 sm:px-8 py-5 sm:py-8 space-y-8">
         {loading ? (
           <div className="space-y-4">
             <div className="skeleton rounded-xl h-10" />
