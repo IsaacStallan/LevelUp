@@ -8,4 +8,4 @@ cmds = ["cd src/backend && npm install --omit=dev"]
 cmds = ["echo 'Backend — no build step'"]
 
 [start]
-cmd = "cd src/backend && node src/index.js"
+cmd = "node /app/src/backend/src/index.js"

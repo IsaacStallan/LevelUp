@@ -3,7 +3,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "cd src/backend && node src/index.js",
+    "startCommand": "node /app/src/backend/src/index.js",
     "restartPolicyType": "ON_FAILURE"
   }
 }
