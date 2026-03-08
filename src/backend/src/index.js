@@ -81,6 +81,17 @@ console.log(`[startup] PORT=${PORT} NODE_ENV=${process.env.NODE_ENV || 'unset'}`
 console.log(`[startup] DATABASE_URL present: ${!!process.env.DATABASE_URL}`);
 console.log(`[startup] JWT_SECRET present: ${!!process.env.JWT_SECRET}`);
 
+// Global error handler — must be registered after all routes
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, _next) => {
+  console.error(`[error] ${req.method} ${req.path} →`, err.message, '\n', err.stack);
+  const isDev = process.env.NODE_ENV !== 'production';
+  res.status(err.status || 500).json({
+    error: isDev ? err.message : 'Internal server error',
+    ...(isDev && { stack: err.stack }),
+  });
+});
+
 // Bind port FIRST, then init DB in background
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[startup] Server bound to 0.0.0.0:${PORT} — accepting requests.`);

@@ -274,6 +274,7 @@ router.post('/insights', insightsIpLimiter, requireSubscription, async (req, res
 
     res.json({ ...insights, remaining: 3 - newUsed });
   } catch (err) {
+    console.error('[insights] Unexpected error:', err.message, err.stack);
     next(err);
   }
 });
