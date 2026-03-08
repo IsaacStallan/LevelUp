@@ -429,6 +429,59 @@ body.shadow-mode {
   animation: skeleton-wave 1.6s ease-in-out infinite;
 }
 
+/* ─── Battle card border pulse ───────────────────────────────────── */
+@keyframes battle-border-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(168,85,247,0.25), 0 0 12px rgba(168,85,247,0.06); }
+  50%       { box-shadow: 0 0 0 1px rgba(168,85,247,0.55), 0 0 28px rgba(168,85,247,0.18); }
+}
+.battle-card-glow {
+  animation: battle-border-pulse 2.5s ease-in-out infinite;
+  border-color: transparent;
+}
+@keyframes battle-border-pulse-crimson {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(220,38,38,0.25), 0 0 12px rgba(220,38,38,0.06); }
+  50%       { box-shadow: 0 0 0 1px rgba(220,38,38,0.55), 0 0 28px rgba(220,38,38,0.18); }
+}
+.battle-card-glow-crimson {
+  animation: battle-border-pulse-crimson 2.5s ease-in-out infinite;
+  border-color: transparent;
+}
+
+/* ─── Battle ⚔️ icon pulse ───────────────────────────────────────── */
+@keyframes battle-icon-pulse {
+  0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 4px rgba(168,85,247,0.3)); }
+  50%       { transform: scale(1.15); filter: drop-shadow(0 0 14px rgba(168,85,247,0.7)); }
+}
+.battle-icon-pulse {
+  display: inline-block;
+  animation: battle-icon-pulse 2s ease-in-out infinite;
+}
+
+/* ─── Duel CTA breathing glow ────────────────────────────────────── */
+@keyframes duel-breathe-purple {
+  0%, 100% { box-shadow: 0 0 14px rgba(124,58,237,0.45), 0 0 28px rgba(124,58,237,0.15); }
+  50%       { box-shadow: 0 0 28px rgba(168,85,247,0.75), 0 0 56px rgba(168,85,247,0.3); }
+}
+.duel-cta-purple {
+  background: linear-gradient(135deg, #5b21b6, #7c3aed);
+  animation: duel-breathe-purple 2s ease-in-out infinite;
+}
+.duel-cta-purple:hover { background: linear-gradient(135deg, #6d28d9, #8b5cf6); }
+
+@keyframes duel-breathe-crimson {
+  0%, 100% { box-shadow: 0 0 14px rgba(185,28,28,0.45), 0 0 28px rgba(185,28,28,0.15); }
+  50%       { box-shadow: 0 0 28px rgba(220,38,38,0.75), 0 0 56px rgba(220,38,38,0.3); }
+}
+.duel-cta-crimson {
+  background: linear-gradient(135deg, #7f1d1d, #b91c1c);
+  animation: duel-breathe-crimson 2s ease-in-out infinite;
+}
+.duel-cta-crimson:hover { background: linear-gradient(135deg, #991b1b, #dc2626); }
+
+/* ─── Hide scrollbar (battle horizontal scroll) ──────────────────── */
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
 /* Grain overlay for shadow mode */
 body.shadow-mode::after {
   content: '';
