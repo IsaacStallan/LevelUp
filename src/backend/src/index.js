@@ -17,12 +17,13 @@ import cronRoutes from './routes/cron.js';
 import pushRoutes from './routes/push.js';
 
 // ── Startup environment validation ────────────────────────────────────────────
-if (!process.env.JWT_SECRET) {
-  console.error('FATAL: JWT_SECRET is not set. Add it to .env and restart.');
+const jwtSecret = (process.env.JWT_SECRET || '').trim();
+if (!jwtSecret) {
+  console.error('FATAL: JWT_SECRET is not set. Add it to Railway env vars and redeploy.');
   process.exit(1);
 }
-if (process.env.JWT_SECRET.length < 32) {
-  console.error('FATAL: JWT_SECRET must be at least 32 characters. Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+if (jwtSecret.length < 32) {
+  console.error('FATAL: JWT_SECRET must be at least 32 characters.');
   process.exit(1);
 }
 if (!process.env.ANTHROPIC_API_KEY) {
@@ -32,10 +33,12 @@ if (!process.env.ANTHROPIC_API_KEY) {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// ── CORS — raw inline middleware, registered before everything else ────────────
-// The cors npm package's callback form can silently swallow errors.
-// This approach sets headers directly and short-circuits OPTIONS before helmet,
-// rate limiting, body parsing, or SQL injection middleware can interfere.
+// ── Health check — registered FIRST, before all middleware ────────────────────
+// Railway pings this to determine if the deployment is healthy.
+// It must respond even if CORS, rate limiting, or DB is broken.
+app.get('/api/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));
+
+// ── CORS — raw inline, second only to health check ────────────────────────────
 const ALLOWED_ORIGINS = new Set(
   [
     'https://vivify.au',
@@ -56,7 +59,6 @@ app.use((req, res, next) => {
     res.setHeader('Vary',                             'Origin');
   }
 
-  // Short-circuit OPTIONS preflight — return 204 before any other middleware
   if (req.method === 'OPTIONS') {
     if (allowed) {
       res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS');
@@ -83,14 +85,12 @@ app.use(helmet({
       frameSrc:    ["'none'"],
     },
   },
-  // Must be cross-origin or false — same-origin (helmet default) blocks API responses
   crossOriginResourcePolicy: { policy: 'cross-origin' },
   hsts: { maxAge: 31536000, includeSubDomains: true },
   frameguard: { action: 'deny' },
   noSniff: true,
 }));
 
-// X-XSS-Protection (not included in modern Helmet, add manually)
 app.use((_req, res, next) => {
   res.setHeader('X-XSS-Protection', '1; mode=block');
   next();
@@ -98,9 +98,7 @@ app.use((_req, res, next) => {
 
 // ── Rate limiting ─────────────────────────────────────────────────────────────
 const limiterDefaults = { standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests, slow down' } };
-
 app.use(rateLimit({ ...limiterDefaults, windowMs: 15 * 60 * 1000, max: 100 }));
-
 const authLimiter = rateLimit({ ...limiterDefaults, windowMs: 15 * 60 * 1000, max: 10 });
 app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/login',    authLimiter);
@@ -111,50 +109,40 @@ app.use(express.json({ limit: '10kb' }));
 
 // ── SQL injection pattern detection ──────────────────────────────────────────
 const SQL_PATTERNS = /--|\/\*|\*\/|xp_/i;
-
 function containsSqlInjection(value) {
   if (typeof value === 'string') return SQL_PATTERNS.test(value);
-  if (typeof value === 'object' && value !== null) {
-    return Object.values(value).some(containsSqlInjection);
-  }
+  if (typeof value === 'object' && value !== null) return Object.values(value).some(containsSqlInjection);
   return false;
 }
-
 app.use((req, res, next) => {
-  if (req.body && containsSqlInjection(req.body)) {
-    return res.status(400).json({ error: 'Invalid characters in request' });
-  }
+  if (req.body && containsSqlInjection(req.body)) return res.status(400).json({ error: 'Invalid characters in request' });
   next();
 });
 
 // ── Routes ────────────────────────────────────────────────────────────────────
-app.use('/api/auth', authRoutes);
-app.use('/api/habits', habitRoutes);
-app.use('/api/gamification', gamificationRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/leaderboard', leaderboardRoutes);
-app.use('/api/analytics', analyticsRoutes);
-app.use('/api/streaks', streakRoutes);
-app.use('/api/titles', titleRoutes);
-app.use('/api/challenges', challengeRoutes);
-app.use('/api/cron', cronRoutes);
-app.use('/api/push', pushRoutes);
+app.use('/api/auth',          authRoutes);
+app.use('/api/habits',        habitRoutes);
+app.use('/api/gamification',  gamificationRoutes);
+app.use('/api/payments',      paymentRoutes);
+app.use('/api/leaderboard',   leaderboardRoutes);
+app.use('/api/analytics',     analyticsRoutes);
+app.use('/api/streaks',       streakRoutes);
+app.use('/api/titles',        titleRoutes);
+app.use('/api/challenges',    challengeRoutes);
+app.use('/api/cron',          cronRoutes);
+app.use('/api/push',          pushRoutes);
 
-app.get('/api/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));
-
+// ── Error handler ─────────────────────────────────────────────────────────────
 app.use((err, _req, res, _next) => {
   console.error(err);
   const status = err.status || 500;
   res.status(status).json({ error: err.message || 'Internal server error' });
 });
 
-// ── Start ─────────────────────────────────────────────────────────────────────
-// Listen immediately so Railway health checks pass, then init the DB.
-// If initDb fails the server stays up (routes return 500 on DB errors)
-// but the process doesn't crash, preventing an infinite restart loop.
+// ── Start — listen first, init DB after ──────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`LevelUp backend running on http://localhost:${PORT}`);
+  console.log(`LevelUp backend running on port ${PORT}`);
   initDb()
     .then(() => console.log('Database ready'))
-    .catch(err => console.error('Database initialisation error (server still running):', err));
+    .catch(err => console.error('Database init error (server still running):', err.message));
 });
