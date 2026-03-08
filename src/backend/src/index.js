@@ -34,7 +34,7 @@ const PORT = process.env.PORT || 3001;
 // ── Health check — registered FIRST, before all middleware ────────────────────
 // Railway pings this to determine if the deployment is healthy.
 // It must respond even if CORS, rate limiting, or DB is broken.
-app.get('/api/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));
+app.get('/api/health', (_req, res) => res.json({ ok: true, ts: Date.now(), v: '85650c9' }));
 
 // ── CORS — raw inline, second only to health check ────────────────────────────
 const ALLOWED_ORIGINS = new Set(
