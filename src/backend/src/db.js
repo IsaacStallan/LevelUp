@@ -121,4 +121,66 @@ export async function initDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await query(`ALTER TABLE battles ADD COLUMN IF NOT EXISTS challenger_habits TEXT NOT NULL DEFAULT '[]'`);
+  await query(`ALTER TABLE battles ADD COLUMN IF NOT EXISTS opponent_habits TEXT NOT NULL DEFAULT '[]'`);
+  // ── Gauntlet negotiation columns ────────────────────────────────────────────
+  await query(`ALTER TABLE battles ADD COLUMN IF NOT EXISTS challenger_assigned_habits TEXT NOT NULL DEFAULT '[]'`);
+  await query(`ALTER TABLE battles ADD COLUMN IF NOT EXISTS opponent_assigned_habits TEXT NOT NULL DEFAULT '[]'`);
+  await query(`ALTER TABLE battles ADD COLUMN IF NOT EXISTS opponent_counter_habits TEXT NOT NULL DEFAULT '[]'`);
+  await query(`ALTER TABLE battles ADD COLUMN IF NOT EXISTS negotiation_status TEXT NOT NULL DEFAULT 'pending'`);
+  await query(`ALTER TABLE battles ADD COLUMN IF NOT EXISTS negotiation_deadline TIMESTAMPTZ`);
+
+  // ── Freemium / Warlord Pass columns ─────────────────────────────────────────
+  await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS warlord_pass_status TEXT NOT NULL DEFAULT 'inactive'`);
+  await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS warlord_pass_expires_at TIMESTAMPTZ`);
+  await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS shadow_mode_trial_started_at TIMESTAMPTZ`);
+  await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS battle_forfeit_tokens INTEGER NOT NULL DEFAULT 0`);
+
+  // ── Battle habit logs (custom per-battle habits) ─────────────────────────────
+  await query(`
+    CREATE TABLE IF NOT EXISTS battle_habit_logs (
+      id SERIAL PRIMARY KEY,
+      battle_id INTEGER NOT NULL REFERENCES battles(id),
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      habit_name TEXT NOT NULL,
+      completed_date TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(battle_id, user_id, habit_name, completed_date)
+    )
+  `);
+
+  // ── Photo proof storage ──────────────────────────────────────────────────────
+  await query(`ALTER TABLE battle_habit_logs ADD COLUMN IF NOT EXISTS photo_storage_path TEXT`);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS battle_proofs (
+      id SERIAL PRIMARY KEY,
+      battle_id INTEGER NOT NULL REFERENCES battles(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      habit_name TEXT NOT NULL,
+      completed_date TEXT NOT NULL,
+      photo_url TEXT NOT NULL,
+      ai_verified BOOLEAN,
+      ai_confidence REAL,
+      ai_reasoning TEXT,
+      opponent_verified BOOLEAN,
+      final_verified BOOLEAN DEFAULT FALSE,
+      disputed_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(battle_id, user_id, habit_name, completed_date)
+    )
+  `);
+
+  // ── Purchases log ─────────────────────────────────────────────────────────────
+  await query(`
+    CREATE TABLE IF NOT EXISTS purchases (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      product_type TEXT NOT NULL,
+      lemon_squeezy_order_id TEXT,
+      amount_cents INTEGER,
+      currency TEXT DEFAULT 'USD',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
 }

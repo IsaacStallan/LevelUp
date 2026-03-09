@@ -16,6 +16,7 @@ import PrivacyPage from './pages/PrivacyPage.jsx';
 import TermsPage from './pages/TermsPage.jsx';
 import BattlesPage from './pages/BattlesPage.jsx';
 import BattleAcceptPage from './pages/BattleAcceptPage.jsx';
+import BattleDetailPage from './pages/BattleDetailPage.jsx';
 import InstallPrompt from './components/InstallPrompt.jsx';
 
 function PrivateRoute({ children }) {
@@ -23,7 +24,7 @@ function PrivateRoute({ children }) {
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 }
 
-// Redirect authenticated users away from public-only pages (landing, login, register)
+// Redirect authenticated users away from login/register only
 function PublicOnlyRoute({ children }) {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? <Navigate to="/dashboard" replace /> : children;
@@ -32,7 +33,7 @@ function PublicOnlyRoute({ children }) {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/"          element={<PublicOnlyRoute><LandingPage /></PublicOnlyRoute>} />
+      <Route path="/"          element={<LandingPage />} />
       <Route path="/login"     element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
       <Route path="/register"  element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
       <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
@@ -41,7 +42,8 @@ function AppRoutes() {
       <Route path="/leaderboard" element={<PrivateRoute><LeaderboardPage /></PrivateRoute>} />
       <Route path="/analytics"   element={<PrivateRoute><AnalyticsPage /></PrivateRoute>} />
       <Route path="/titles"      element={<PrivateRoute><TitlesPage /></PrivateRoute>} />
-      <Route path="/battles"      element={<PrivateRoute><BattlesPage /></PrivateRoute>} />
+      <Route path="/battles"        element={<PrivateRoute><BattlesPage /></PrivateRoute>} />
+      <Route path="/battles/:id"   element={<PrivateRoute><BattleDetailPage /></PrivateRoute>} />
       <Route path="/battle/accept" element={<BattleAcceptPage />} />
       <Route path="/privacy"     element={<PrivacyPage />} />
       <Route path="/terms"       element={<TermsPage />} />

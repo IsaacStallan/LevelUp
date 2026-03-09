@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { query } from '../db.js';
-import { verifyToken, requireSubscription } from '../middleware/auth.js';
+import { verifyToken, requireWarlordPass } from '../middleware/auth.js';
 
 // 10 AI insight requests / hour per IP — prevents account-farming attacks
 const insightsIpLimiter = rateLimit({
@@ -58,7 +58,7 @@ async function habitBestStreak(habitId) {
 }
 
 // ── GET / ─────────────────────────────────────────────────────────────────────
-router.get('/', async (req, res, next) => {
+router.get('/', requireWarlordPass, async (req, res, next) => {
   try {
     const userId = req.user.id;
     const since = new Date();
@@ -132,7 +132,7 @@ router.get('/', async (req, res, next) => {
 });
 
 // ── POST /insights ─────────────────────────────────────────────────────────────
-router.post('/insights', insightsIpLimiter, requireSubscription, async (req, res, next) => {
+router.post('/insights', insightsIpLimiter, requireWarlordPass, async (req, res, next) => {
   try {
     const userId = req.user.id;
     const today  = new Date().toISOString().slice(0, 10);

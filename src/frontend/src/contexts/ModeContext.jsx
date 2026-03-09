@@ -3,24 +3,97 @@ import client from '../api/client.js';
 
 const ModeContext = createContext(null);
 
+const DEFAULT_ENTITLEMENTS = {
+  warlordPass: false,
+  shadowAccess: false,
+  shadowTrialDaysLeft: 0,
+  trialStarted: false,
+  freezeTokens: 0,
+  forfeitTokens: 0,
+};
+
+function ShadowUpgradeModal({ onClose }) {
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
+    >
+      <div
+        className="w-full max-w-xs rounded-2xl border border-red-900/50 p-6 space-y-4 text-center"
+        style={{ background: 'linear-gradient(135deg, rgba(30,10,20,0.98), rgba(10,5,15,0.99))' }}
+      >
+        <p className="text-4xl">🌑</p>
+        <h2 className="text-lg font-bold text-white">Shadow Trial Ended</h2>
+        <p className="text-sm text-gray-400 leading-relaxed">
+          Your 7-day Shadow Mode trial is over. Unlock it permanently with the Warlord Pass.
+        </p>
+        <div className="flex gap-3 pt-1">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl border border-white/10 text-gray-400 text-sm hover:bg-white/5 transition-all"
+          >
+            Maybe Later
+          </button>
+          <a
+            href="/upgrade"
+            className="flex-1 py-2.5 rounded-xl bg-red-700 hover:bg-red-600 text-white text-sm font-bold transition-all text-center"
+          >
+            Get Warlord Pass
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ModeProvider({ children }) {
   const [mode, setMode] = useState(() => {
     try { return localStorage.getItem('vivify_mode') || 'LIGHT'; } catch { return 'LIGHT'; }
   });
+  const [entitlements, setEntitlements] = useState(DEFAULT_ENTITLEMENTS);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   useEffect(() => {
     document.body.classList.toggle('shadow-mode', mode === 'SHADOW');
     try { localStorage.setItem('vivify_mode', mode); } catch {}
   }, [mode]);
 
-  const switchMode = useCallback((next) => {
-    setMode(next);
-    client.patch('/auth/mode', { mode: next }).catch(() => {});
+  useEffect(() => {
+    if (!localStorage.getItem('levelup_token')) return;
+    client.get('/auth/entitlements')
+      .then(r => setEntitlements(r.data))
+      .catch(() => {});
   }, []);
 
+  const refreshEntitlements = useCallback(() => {
+    if (!localStorage.getItem('levelup_token')) return;
+    client.get('/auth/entitlements')
+      .then(r => setEntitlements(r.data))
+      .catch(() => {});
+  }, []);
+
+  const switchMode = useCallback(async (next) => {
+    if (next === 'SHADOW' && !entitlements.shadowAccess) {
+      try {
+        const { data } = await client.post('/auth/start-shadow-trial');
+        setEntitlements(prev => ({ ...prev, shadowAccess: true, shadowTrialDaysLeft: data.daysLeft }));
+        setMode('SHADOW');
+        client.patch('/auth/mode', { mode: 'SHADOW' }).catch(() => {});
+      } catch (err) {
+        if (err.response?.status === 403) {
+          setShowUpgradeModal(true);
+        }
+      }
+      return;
+    }
+    setMode(next);
+    client.patch('/auth/mode', { mode: next }).catch(() => {});
+  }, [entitlements.shadowAccess]);
+
   return (
-    <ModeContext.Provider value={{ mode, switchMode }}>
+    <ModeContext.Provider value={{ mode, switchMode, entitlements, refreshEntitlements }}>
       {children}
+      {showUpgradeModal && <ShadowUpgradeModal onClose={() => setShowUpgradeModal(false)} />}
     </ModeContext.Provider>
   );
 }

@@ -136,7 +136,28 @@ router.get('/streak-check', requireCronSecret, async (req, res, next) => {
       );
     }
 
-    res.json({ checked: candidates.length, sent, errors, battles_closed: expiredBattles.length });
+    // Auto-forfeit battles where negotiation_deadline has passed without acceptance
+    const { rows: expiredNegotiations } = await query(
+      `SELECT * FROM battles
+       WHERE status = 'pending'
+         AND negotiation_deadline IS NOT NULL
+         AND negotiation_deadline < NOW()
+         AND negotiation_status NOT IN ('accepted', 'forfeited')`
+    );
+    for (const b of expiredNegotiations) {
+      await query(
+        `UPDATE battles SET negotiation_status = 'forfeited', status = 'completed' WHERE id = $1`,
+        [b.id]
+      );
+    }
+
+    res.json({
+      checked: candidates.length,
+      sent,
+      errors,
+      battles_closed: expiredBattles.length,
+      negotiations_forfeited: expiredNegotiations.length,
+    });
   } catch (err) {
     next(err);
   }

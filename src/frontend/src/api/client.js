@@ -18,7 +18,11 @@ client.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('levelup_token');
       localStorage.removeItem('levelup_user');
-      window.location.href = '/login';
+      const publicPaths = ['/', '/login', '/register', '/privacy', '/terms', '/battle/accept'];
+      const isPublic = publicPaths.some(p => window.location.pathname === p || window.location.pathname.startsWith('/battle/accept'));
+      if (!isPublic) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

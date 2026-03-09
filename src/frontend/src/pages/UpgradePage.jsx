@@ -1,127 +1,207 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import client from '../api/client.js';
+import { useNavigate } from 'react-router-dom';
+import NavHeader from '../components/NavHeader.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import { useMode } from '../contexts/ModeContext.jsx';
 
-const CHECKOUT_URL = import.meta.env.VITE_LEMON_SQUEEZY_CHECKOUT_URL;
-if (!CHECKOUT_URL) {
-  console.warn('UpgradePage: VITE_LEMON_SQUEEZY_CHECKOUT_URL is not set');
+const LS_WARLORD_PASS  = import.meta.env.VITE_LS_WARLORD_PASS_URL;
+const LS_FREEZE_3      = import.meta.env.VITE_LS_FREEZE_3_URL;
+const LS_FREEZE_10     = import.meta.env.VITE_LS_FREEZE_10_URL;
+const LS_FORFEIT       = import.meta.env.VITE_LS_FORFEIT_TOKEN_URL;
+const LS_DUEL_EXTEND   = import.meta.env.VITE_LS_DUEL_EXTEND_URL;
+
+function checkoutUrl(base, email) {
+  if (!base) return '#';
+  return email ? `${base}?checkout[email]=${encodeURIComponent(email)}` : base;
 }
-
-const FEATURES = [
-  { icon: '📋', label: 'Unlimited habit tracking' },
-  { icon: '⚡', label: 'XP & leveling system' },
-  { icon: '🔥', label: 'Streak tracking & bonuses' },
-  { icon: '🧙', label: 'Character progression (10 stages, 100 levels)' },
-  { icon: '📊', label: 'Lifetime stats & history' },
-  { icon: '🎯', label: 'Milestone XP bonuses at 7, 14 & 30 days' },
-];
 
 export default function UpgradePage() {
   const { user } = useAuth();
-  const [sub, setSub] = useState(null);
-
-  useEffect(() => {
-    client.get('/payments/status').then(r => setSub(r.data.subscription)).catch(() => {});
-  }, []);
-
-  const checkoutUrl = user?.email
-    ? `${CHECKOUT_URL}?checkout[email]=${encodeURIComponent(user.email)}`
-    : CHECKOUT_URL;
+  const { mode, entitlements } = useMode();
+  const isShadow = mode === 'SHADOW';
+  const navigate = useNavigate();
+  const { warlordPass, shadowTrialDaysLeft, freezeTokens, forfeitTokens } = entitlements;
 
   return (
-    <div className="page-enter min-h-screen flex flex-col relative overflow-hidden">
-      {/* Floating orbs */}
-      <div aria-hidden="true" className="pointer-events-none">
-        <div className="orb w-64 h-64 bg-purple-600/20 top-[-80px] left-[-80px]" style={{ '--dur': '8s', '--delay': '0s' }} />
-        <div className="orb w-48 h-48 bg-pink-600/15 bottom-[-40px] right-[-40px]" style={{ '--dur': '11s', '--delay': '3s' }} />
-        <div className="orb w-32 h-32 bg-indigo-500/10 top-[40%] right-[10%]" style={{ '--dur': '14s', '--delay': '6s' }} />
-      </div>
+    <div className="page-enter min-h-screen">
+      <NavHeader level={Math.min(Math.floor((user?.xp_total ?? 0) / 100), 100)} />
 
-      {/* Back link — pinned top-left */}
-      <div className="relative z-10 px-4 pt-4 pb-0">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-300 transition-colors"
-        >
-          ← Dashboard
-        </Link>
-      </div>
+      <main className="max-w-lg mx-auto px-4 py-6 space-y-6">
 
-      {/* Content — centred, full-width on small screens */}
-      <div className="relative z-10 flex-1 flex items-start justify-center px-4 py-6 sm:py-12">
-        <div className="w-full max-w-sm sm:max-w-md">
+        {/* Header */}
+        <div>
+          <button
+            onClick={() => navigate(-1)}
+            className="text-xs text-gray-500 hover:text-gray-300 transition-colors mb-4 inline-flex items-center gap-1"
+          >
+            ← Back
+          </button>
+          <h1 className={`text-2xl font-bold ${isShadow ? 'text-red-400' : 'text-white'}`}>
+            ⚔️ {isShadow ? 'The Armoury' : 'Armoury'}
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Unlock Shadow Mode, freeze streaks, and claim battle advantages.
+          </p>
+        </div>
 
-          {/* Hero */}
-          <div className="text-center mb-6 sm:mb-8">
-            <div className="text-5xl sm:text-6xl mb-3">👑</div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight">
-              Unlock Vivify Pro
-            </h1>
-            <p className="text-gray-400 mt-2 text-sm sm:text-base">
-              Turn your habits into an epic quest
-            </p>
-          </div>
-
-          {/* Pricing card — full-width on mobile */}
-          <div className="card-glow glass-card rounded-2xl border border-purple-700/40 overflow-hidden mb-4">
-
-            {/* Price header */}
-            <div className="px-5 pt-5 pb-4 border-b border-gray-800/60 text-center">
-              <div className="flex items-end justify-center gap-1">
-                <span className="text-5xl font-black text-white">$7</span>
-                <span className="text-gray-400 text-sm mb-2">/month</span>
+        {/* ── Warlord Pass ─────────────────────────────────────────── */}
+        <section className="space-y-3">
+          <h2 className={`text-[10px] font-bold uppercase tracking-widest ${isShadow ? 'text-red-500' : 'text-purple-400'}`}>
+            Warlord Pass
+          </h2>
+          <div
+            className={`rounded-2xl border p-5 space-y-4 ${
+              isShadow
+                ? 'border-red-800/50'
+                : 'border-purple-700/40'
+            }`}
+            style={{
+              background: isShadow
+                ? 'linear-gradient(135deg, rgba(40,10,15,0.6), rgba(20,5,10,0.8))'
+                : 'linear-gradient(135deg, rgba(80,30,120,0.15), rgba(40,10,80,0.25))',
+            }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className={`text-lg font-bold ${isShadow ? 'text-red-300' : 'text-white'}`}>
+                  {isShadow ? '👑 WARLORD PASS' : '👑 Warlord Pass'}
+                </p>
+                <p className="text-sm text-gray-400 mt-0.5">Shadow Mode, forever.</p>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Cancel anytime</p>
+              <div className="text-right shrink-0">
+                <p className={`text-2xl font-black tabular-nums ${isShadow ? 'text-red-400' : 'text-purple-300'}`}>
+                  $4.99
+                </p>
+                <p className="text-[10px] text-gray-600">/month</p>
+              </div>
             </div>
 
-            {/* Feature list */}
-            <ul className="px-5 py-4 space-y-3">
-              {FEATURES.map((f, i) => (
-                <li key={f.label} className="flex items-start gap-3">
-                  <span
-                    className="feature-check shrink-0 mt-0.5"
-                    style={{ '--delay': `${i * 0.12}s` }}
-                  >
-                    <svg viewBox="0 0 20 20" width="18" height="18" fill="none" className="anim-feature-check">
-                      <circle cx="10" cy="10" r="9" stroke="rgba(168,85,247,0.5)" strokeWidth="1.5" />
-                      <path d="M6 10.5l3 3 5-5.5" stroke="#a855f7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </span>
-                  <span className="text-gray-300 text-sm leading-snug">{f.label}</span>
+            <ul className="space-y-2">
+              {[
+                'Permanent Shadow Mode access',
+                '5 Streak Freeze tokens on signup',
+                'Unlock Shadow-exclusive titles',
+                'Priority battle matchmaking',
+              ].map(f => (
+                <li key={f} className="flex items-center gap-2 text-sm text-gray-300">
+                  <span className={`shrink-0 ${isShadow ? 'text-red-500' : 'text-purple-400'}`}>✓</span>
+                  {f}
                 </li>
               ))}
             </ul>
 
-            {/* CTA */}
-            <div className="px-5 pb-5">
-              {sub?.status === 'active' ? (
-                <div className="text-center">
-                  <div className="w-full bg-green-900/40 border border-green-700/60 text-green-400 px-4 py-3 rounded-xl text-sm font-semibold">
-                    ✓ Pro is active
-                  </div>
-                  {sub.current_period_end && (
-                    <p className="text-xs text-gray-500 mt-2">
-                      Renews {new Date(sub.current_period_end).toLocaleDateString()}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <button
-                  onClick={() => window.open(checkoutUrl, '_blank')}
-                  className="block w-full text-center bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white font-bold py-4 rounded-xl transition-colors glow-purple text-base"
-                >
-                  Start Subscription — $7/mo
-                </button>
-              )}
-            </div>
-          </div>
+            {shadowTrialDaysLeft > 0 && !warlordPass && (
+              <p className="text-xs text-amber-400 text-center">
+                ⏱ Shadow trial: {shadowTrialDaysLeft} day{shadowTrialDaysLeft !== 1 ? 's' : ''} remaining
+              </p>
+            )}
 
-          <p className="text-center text-xs text-gray-600">
-            Secure payment by Lemon Squeezy
+            {warlordPass ? (
+              <div className="w-full text-center bg-green-900/30 border border-green-700/40 text-green-400 py-2.5 rounded-xl text-sm font-semibold">
+                ✓ Warlord Pass Active
+              </div>
+            ) : (
+              <button
+                onClick={() => window.open(checkoutUrl(LS_WARLORD_PASS, user?.email), '_blank')}
+                disabled={!LS_WARLORD_PASS}
+                className={`w-full py-3 rounded-xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50 ${
+                  isShadow
+                    ? 'bg-red-700 hover:bg-red-600 text-white'
+                    : 'bg-purple-600 hover:bg-purple-500 text-white'
+                }`}
+              >
+                {isShadow ? 'CLAIM THE PASS ⚔️' : 'Get Warlord Pass — $4.99/mo'}
+              </button>
+            )}
+          </div>
+        </section>
+
+        {/* ── Freeze Token Packs ───────────────────────────────────── */}
+        <section className="space-y-3">
+          <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
+            Streak Freeze Tokens
+          </h2>
+          <p className="text-xs text-gray-600">
+            Protect your streak when life gets in the way. You have{' '}
+            <span className="text-white font-bold">{freezeTokens}</span> token{freezeTokens !== 1 ? 's' : ''}.
           </p>
-        </div>
-      </div>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: '3-Pack', price: '$1.99', url: LS_FREEZE_3,  tokens: 3  },
+              { label: '10-Pack', price: '$4.99', url: LS_FREEZE_10, tokens: 10, best: true },
+            ].map(pack => (
+              <div
+                key={pack.label}
+                className={`rounded-xl border p-4 space-y-3 bg-white/[0.02] ${
+                  pack.best ? 'border-purple-600/40' : 'border-white/[0.07]'
+                }`}
+              >
+                {pack.best && (
+                  <p className="text-[9px] text-purple-400 font-bold uppercase tracking-widest">Best Value</p>
+                )}
+                <p className="text-sm font-bold text-white">🧊 {pack.label}</p>
+                <p className="text-[10px] text-gray-500">+{pack.tokens} freeze tokens</p>
+                <button
+                  onClick={() => window.open(checkoutUrl(pack.url, user?.email), '_blank')}
+                  disabled={!pack.url}
+                  className="w-full py-2 rounded-lg border border-white/10 text-gray-300 text-xs font-medium hover:bg-white/5 transition-all disabled:opacity-50"
+                >
+                  {pack.price}
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Battle Items ─────────────────────────────────────────── */}
+        <section className="space-y-3">
+          <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
+            Battle Items
+          </h2>
+          {forfeitTokens > 0 && (
+            <p className="text-xs text-gray-600">
+              You have <span className="text-white font-bold">{forfeitTokens}</span> forfeit token{forfeitTokens !== 1 ? 's' : ''}.
+            </p>
+          )}
+          <div className="space-y-2">
+            {[
+              {
+                icon: '🏳️',
+                label: 'Forfeit Token',
+                desc: 'Withdraw from a battle without a loss',
+                price: '$0.99',
+                url: LS_FORFEIT,
+              },
+              {
+                icon: '⏳',
+                label: 'Duel Extension',
+                desc: 'Extend an active battle by 7 days',
+                price: '$1.99',
+                url: LS_DUEL_EXTEND,
+              },
+            ].map(item => (
+              <div
+                key={item.label}
+                className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3"
+              >
+                <span className="text-2xl shrink-0">{item.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-white">{item.label}</p>
+                  <p className="text-[11px] text-gray-500">{item.desc}</p>
+                </div>
+                <button
+                  onClick={() => window.open(checkoutUrl(item.url, user?.email), '_blank')}
+                  disabled={!item.url}
+                  className="shrink-0 px-3 py-1.5 rounded-lg border border-white/10 text-xs text-gray-300 hover:bg-white/5 transition-all font-medium disabled:opacity-50"
+                >
+                  {item.price}
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <p className="text-center text-xs text-gray-700 pb-4">Secure payment by Lemon Squeezy</p>
+      </main>
     </div>
   );
 }

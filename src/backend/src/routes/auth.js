@@ -175,4 +175,71 @@ router.patch('/mode', verifyToken, async (req, res, next) => {
   }
 });
 
+router.get('/entitlements', verifyToken, async (req, res, next) => {
+  try {
+    const { rows: [user] } = await query(
+      `SELECT warlord_pass_status, warlord_pass_expires_at, shadow_mode_trial_started_at,
+              freeze_tokens, battle_forfeit_tokens
+       FROM users WHERE id = $1`,
+      [req.user.id]
+    );
+
+    const warlordPass = user.warlord_pass_status === 'active' &&
+      (!user.warlord_pass_expires_at || new Date(user.warlord_pass_expires_at) > new Date());
+
+    let shadowAccess = warlordPass;
+    let shadowTrialDaysLeft = 0;
+
+    if (!shadowAccess && user.shadow_mode_trial_started_at) {
+      const trialEnd = new Date(user.shadow_mode_trial_started_at);
+      trialEnd.setDate(trialEnd.getDate() + 7);
+      const msLeft = trialEnd - Date.now();
+      if (msLeft > 0) {
+        shadowAccess = true;
+        shadowTrialDaysLeft = Math.ceil(msLeft / 86400000);
+      }
+    }
+
+    res.json({
+      warlordPass,
+      shadowAccess,
+      shadowTrialDaysLeft,
+      trialStarted: !!user.shadow_mode_trial_started_at,
+      freezeTokens: user.freeze_tokens ?? 0,
+      forfeitTokens: user.battle_forfeit_tokens ?? 0,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/start-shadow-trial', verifyToken, async (req, res, next) => {
+  try {
+    const { rows: [user] } = await query(
+      `SELECT warlord_pass_status, warlord_pass_expires_at, shadow_mode_trial_started_at
+       FROM users WHERE id = $1`,
+      [req.user.id]
+    );
+
+    const warlordActive = user.warlord_pass_status === 'active' &&
+      (!user.warlord_pass_expires_at || new Date(user.warlord_pass_expires_at) > new Date());
+    if (warlordActive) return res.json({ started: false, daysLeft: 30 });
+
+    if (user.shadow_mode_trial_started_at) {
+      const trialEnd = new Date(user.shadow_mode_trial_started_at);
+      trialEnd.setDate(trialEnd.getDate() + 7);
+      const msLeft = trialEnd - Date.now();
+      if (msLeft <= 0) {
+        return res.status(403).json({ error: 'Trial has ended. Upgrade to Warlord Pass.', code: 'TRIAL_EXPIRED' });
+      }
+      return res.json({ started: false, daysLeft: Math.ceil(msLeft / 86400000) });
+    }
+
+    await query('UPDATE users SET shadow_mode_trial_started_at = NOW() WHERE id = $1', [req.user.id]);
+    return res.json({ started: true, daysLeft: 7 });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

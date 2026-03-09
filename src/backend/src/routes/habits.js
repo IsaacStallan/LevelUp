@@ -14,13 +14,18 @@ const habitSchema = z.object({
   icon: z.string().max(10).optional().default('✅'),
 });
 
+function sydneyDate(offset = 0) {
+  const d = new Date(Date.now() - offset * 86400000);
+  return d.toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' });
+}
+
 async function getCurrentStreak(userId) {
   const { rows: logs } = await query(
     `SELECT DISTINCT completed_date FROM habit_logs WHERE user_id = $1 ORDER BY completed_date DESC`,
     [userId]
   );
   let streak = 0;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = sydneyDate();
   let check = today;
   for (const log of logs) {
     if (log.completed_date === check) {
@@ -37,7 +42,7 @@ async function getCurrentStreak(userId) {
 
 router.get('/', async (req, res, next) => {
   try {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = sydneyDate();
     const { rows: habits } = await query(
       `SELECT h.*,
         CASE WHEN hl.id IS NOT NULL THEN 1 ELSE 0 END as completed_today
@@ -113,7 +118,7 @@ router.post('/:id/complete', async (req, res, next) => {
     );
     if (!habit) return res.status(404).json({ error: 'Habit not found' });
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = sydneyDate();
     const { rows: [existing] } = await query(
       'SELECT id FROM habit_logs WHERE habit_id = $1 AND completed_date = $2',
       [habit.id, today]
@@ -121,9 +126,7 @@ router.post('/:id/complete', async (req, res, next) => {
     if (existing) return res.status(409).json({ error: 'Already completed today' });
 
     const streakBeforeToday = await getCurrentStreak(req.user.id);
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+    const yesterdayStr = sydneyDate(1);
     const { rows: [hadYesterday] } = await query(
       'SELECT id FROM habit_logs WHERE user_id = $1 AND completed_date = $2',
       [req.user.id, yesterdayStr]
@@ -140,42 +143,68 @@ router.post('/:id/complete', async (req, res, next) => {
       [habit.id, req.user.id, today, xp]
     );
 
-    // Battle scoring — recalculate avg daily completion rate for any active battles
+    // Battle scoring — cross-assigned gauntlet scoring per active battle
+    // Challenger is scored on habits opponent assigned to them (opponent_assigned_habits)
+    // Opponent is scored on habits challenger assigned to them (challenger_assigned_habits)
     const { rows: activeBattles } = await query(
       `SELECT * FROM battles WHERE (challenger_id = $1 OR opponent_id = $1)
        AND status = 'active' AND ends_at > NOW()`,
       [req.user.id]
     );
-    if (activeBattles.length > 0) {
-      // Score = average daily completion rate since battle started
-      // daily rate = (distinct habits completed that day / total active habits) * 100
-      const { rows: [scoreRow] } = await query(
-        `WITH daily AS (
-           SELECT hl.completed_date,
-                  COUNT(DISTINCT hl.habit_id)::float AS completed
-           FROM habit_logs hl
-           WHERE hl.user_id = $1
-             AND hl.completed_date >= (
-               SELECT MIN(starts_at)::date FROM battles
-               WHERE (challenger_id = $1 OR opponent_id = $1) AND status = 'active'
-             )
-             AND hl.completed_date <= CURRENT_DATE
-           GROUP BY hl.completed_date
-         ),
-         total AS (
-           SELECT GREATEST(COUNT(*)::float, 1) AS cnt FROM habits WHERE user_id = $1 AND is_active = 1
-         )
-         SELECT COALESCE(ROUND(AVG((daily.completed / total.cnt) * 100))::int, 0) AS score
-         FROM daily, total`,
-        [req.user.id]
-      );
-      const newScore = scoreRow.score;
-      for (const battle of activeBattles) {
-        if (battle.challenger_id === req.user.id) {
-          await query('UPDATE battles SET challenger_score = $1 WHERE id = $2', [newScore, battle.id]);
-        } else {
-          await query('UPDATE battles SET opponent_score = $1 WHERE id = $2', [newScore, battle.id]);
-        }
+    for (const battle of activeBattles) {
+      const isChallenger = battle.challenger_id === req.user.id;
+      const startsAtDate = new Date(battle.starts_at).toISOString().slice(0, 10);
+
+      // Cross-scoring: you're judged on the habits your opponent assigned to you
+      const myAssignedHabits = isChallenger
+        ? JSON.parse(battle.opponent_assigned_habits || '[]')   // what opponent assigned to challenger
+        : JSON.parse(battle.challenger_assigned_habits || '[]'); // what challenger assigned to opponent
+
+      let newScore;
+      if (myAssignedHabits.length > 0) {
+        const { rows: [scoreRow] } = await query(
+          `WITH daily AS (
+             SELECT hl.completed_date,
+                    COUNT(DISTINCT hl.habit_id)::float AS completed
+             FROM habit_logs hl
+             WHERE hl.user_id = $1
+               AND hl.habit_id = ANY($2::int[])
+               AND hl.completed_date >= $3
+               AND hl.completed_date <= CURRENT_DATE
+             GROUP BY hl.completed_date
+           ),
+           total AS (SELECT $4::float AS cnt)
+           SELECT COALESCE(ROUND(AVG((daily.completed / total.cnt) * 100))::int, 0) AS score
+           FROM daily, total`,
+          [req.user.id, myAssignedHabits, startsAtDate, myAssignedHabits.length]
+        );
+        newScore = scoreRow.score;
+      } else {
+        // No assigned habits — score across all habits (legacy / non-gauntlet battle)
+        const { rows: [scoreRow] } = await query(
+          `WITH daily AS (
+             SELECT hl.completed_date,
+                    COUNT(DISTINCT hl.habit_id)::float AS completed
+             FROM habit_logs hl
+             WHERE hl.user_id = $1
+               AND hl.completed_date >= $2
+               AND hl.completed_date <= CURRENT_DATE
+             GROUP BY hl.completed_date
+           ),
+           total AS (
+             SELECT GREATEST(COUNT(*)::float, 1) AS cnt FROM habits WHERE user_id = $1 AND is_active = 1
+           )
+           SELECT COALESCE(ROUND(AVG((daily.completed / total.cnt) * 100))::int, 0) AS score
+           FROM daily, total`,
+          [req.user.id, startsAtDate]
+        );
+        newScore = scoreRow.score;
+      }
+
+      if (isChallenger) {
+        await query('UPDATE battles SET challenger_score = $1 WHERE id = $2', [newScore, battle.id]);
+      } else {
+        await query('UPDATE battles SET opponent_score = $1 WHERE id = $2', [newScore, battle.id]);
       }
     }
 

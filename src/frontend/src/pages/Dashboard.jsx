@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import client from '../api/client.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useMode } from '../contexts/ModeContext.jsx';
-import HabitCard from '../components/HabitCard.jsx';
 import LevelUpOverlay from '../components/LevelUpOverlay.jsx';
 import StageUpOverlay from '../components/StageUpOverlay.jsx';
 import NavHeader from '../components/NavHeader.jsx';
@@ -23,12 +22,12 @@ function getCharacter(level) {
 }
 
 /* ─── Identity Bar ─────────────────────────────────────────────────── */
-function IdentityBar({ character, username, level, streak, xpTotal, rank, equippedTitle }) {
+function IdentityBar({ character, username, level, streak, xpTotal, rank, equippedTitle, isShadow }) {
   return (
     <div className="flex items-center justify-between gap-3 py-3 px-1">
       {/* Left: character + name + level */}
       <div className="flex items-center gap-2.5 min-w-0">
-        <span className="text-3xl leading-none select-none">{character.emoji}</span>
+        {isShadow && <span className="text-3xl leading-none select-none">{character.emoji}</span>}
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="text-sm font-bold text-white truncate max-w-[96px]">{username}</span>
@@ -36,7 +35,7 @@ function IdentityBar({ character, username, level, streak, xpTotal, rank, equipp
               Lv.{level}
             </span>
           </div>
-          {equippedTitle && (
+          {isShadow && equippedTitle && (
             <p className="text-[10px] text-yellow-400 leading-tight truncate mt-0.5">{equippedTitle}</p>
           )}
         </div>
@@ -68,16 +67,25 @@ function IdentityBar({ character, username, level, streak, xpTotal, rank, equipp
 }
 
 /* ─── Battle card (mini) ────────────────────────────────────────────── */
-function BattleMiniCard({ battle, userId, isShadow }) {
+function parseHabitsJson(json) {
+  try { return JSON.parse(json || '[]'); } catch { return []; }
+}
+
+function BattleMiniCard({ battle, userId, isShadow, className = '' }) {
   const isChallenger = battle.challenger_id === userId;
   const myScore    = isChallenger ? battle.challenger_score : battle.opponent_score;
   const theirScore = isChallenger ? battle.opponent_score  : battle.challenger_score;
   const theirName  = isChallenger ? battle.opponent_username : battle.challenger_username;
   const remaining  = Math.max(0, Math.ceil((new Date(battle.ends_at) - Date.now()) / 86400000));
 
+  // My assigned habits = what the OTHER person wrote for me
+  const myHabits = isChallenger
+    ? parseHabitsJson(battle.opponent_assigned_habits)
+    : parseHabitsJson(battle.challenger_assigned_habits);
+
   return (
     <div
-      className={`flex-shrink-0 w-60 rounded-2xl border p-4 space-y-3 ${isShadow ? 'battle-card-glow-crimson' : 'battle-card-glow'}`}
+      className={`rounded-2xl border p-4 space-y-3 ${isShadow ? 'battle-card-glow-crimson' : 'battle-card-glow'} ${className}`}
       style={{ background: 'linear-gradient(135deg, rgba(20,10,40,0.94), rgba(8,4,20,0.98))' }}
     >
       <div className="flex items-center justify-between">
@@ -87,51 +95,142 @@ function BattleMiniCard({ battle, userId, isShadow }) {
       <p className="text-xs text-gray-400 truncate">vs <span className="text-gray-200 font-semibold">{theirName ?? '?'}</span></p>
       <div className="flex items-end justify-between gap-2">
         <div className="text-left">
-          <p className={`text-4xl font-black tabular-nums leading-none ${isShadow ? 'text-red-400' : 'text-purple-300'}`}>
-            {myScore}<span className="text-xl">%</span>
+          <p className={`text-5xl font-black tabular-nums leading-none ${isShadow ? 'text-red-400' : 'text-purple-300'}`}>
+            {myScore}<span className="text-2xl">%</span>
           </p>
           <p className="text-[10px] text-gray-600 mt-1">you</p>
         </div>
-        <div className="text-center pb-5">
-          <span className="text-xs text-gray-700 font-black tracking-widest">VS</span>
+        <div className="text-center pb-6">
+          <span className="text-sm text-gray-700 font-black tracking-widest">VS</span>
         </div>
         <div className="text-right">
-          <p className="text-4xl font-black tabular-nums text-gray-400 leading-none">
-            {theirScore}<span className="text-xl">%</span>
+          <p className="text-5xl font-black tabular-nums text-gray-400 leading-none">
+            {theirScore}<span className="text-2xl">%</span>
           </p>
           <p className="text-[10px] text-gray-600 mt-1">them</p>
         </div>
       </div>
+      {myHabits.length > 0 && (
+        <div className="flex flex-wrap gap-1 pt-1 border-t border-white/[0.04]">
+          {myHabits.slice(0, 5).map((h, i) => (
+            <span key={i} className="flex items-center gap-1 text-[10px] bg-white/[0.04] border border-white/[0.06] rounded-md px-1.5 py-0.5 text-gray-500">
+              <span>{h.icon}</span>
+              <span className="max-w-[5rem] truncate">{h.name}</span>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+/* ─── Negotiation mini-card ─────────────────────────────────────────── */
+function NegotiationMiniCard({ battle, userId, isShadow }) {
+  const isChallenger = battle.challenger_id === userId;
+  const neg = battle.negotiation_status;
+  const isCounterReceived = neg === 'countered' && isChallenger;
+  const isCounterSent     = neg === 'countered' && !isChallenger;
+  const theirName = isChallenger ? battle.opponent_username : battle.challenger_username;
+
+  return (
+    <Link to={`/battles/${battle.id}`} className="block">
+      <div
+        className={`rounded-xl border p-3 transition-all ${
+          isCounterReceived
+            ? 'border-amber-600/70 shadow-[0_0_14px_rgba(251,191,36,0.15)] hover:border-amber-500/80'
+            : 'border-white/[0.06] hover:border-white/[0.12]'
+        }`}
+        style={{ background: 'rgba(255,255,255,0.02)' }}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-base">⚔️</span>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-gray-300 truncate">
+                vs {theirName || (isChallenger ? 'Awaiting opponent…' : battle.challenger_username)}
+              </p>
+              <p className="text-[10px] text-gray-600">{battle.duration_days}d · {battle.habit_category}</p>
+            </div>
+          </div>
+          {isCounterReceived ? (
+            <span className="text-[10px] font-bold text-amber-300 bg-amber-900/40 border border-amber-700/50 px-2 py-0.5 rounded-full whitespace-nowrap">🔄 RESPOND</span>
+          ) : isCounterSent ? (
+            <span className="text-[10px] text-gray-500 whitespace-nowrap">⚠️ Counter sent</span>
+          ) : (
+            <span className="text-[10px] text-gray-600 whitespace-nowrap">⏳ Awaiting</span>
+          )}
+        </div>
+      </div>
+    </Link>
   );
 }
 
 /* ─── Battles section ───────────────────────────────────────────────── */
 function BattlesSection({ battles, userId, isShadow }) {
-  const active = battles.filter(b => b.status === 'active');
+  const active  = battles.filter(b => b.status === 'active');
+  const pending = battles.filter(b => b.status === 'pending');
   const accentClass = isShadow ? 'text-red-500' : 'text-purple-400';
+
+  const hasBattles = active.length > 0 || pending.length > 0;
 
   return (
     <section>
       <div className="flex items-center justify-between mb-4">
         <h2 className={`text-xs font-bold uppercase tracking-widest ${accentClass}`}>
-          {isShadow ? 'ACTIVE DUELS' : 'Active Battles'}
+          {isShadow ? 'DUELS' : 'Battles'}
         </h2>
         <Link to="/battles" className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
           View all →
         </Link>
       </div>
 
-      {active.length > 0 ? (
-        <>
-          <div className="flex gap-4 overflow-x-auto pb-3 -mx-4 sm:-mx-8 px-4 sm:px-8 scrollbar-none">
-            {active.map(b => (
-              <BattleMiniCard key={b.id} battle={b} userId={userId} isShadow={isShadow} />
-            ))}
-          </div>
+      {/* Light Mode teaser banner */}
+      {!isShadow && (
+        <div className="mb-3 rounded-xl border border-purple-800/30 bg-purple-950/20 px-3 py-2.5 flex items-start gap-2">
+          <span className="text-base shrink-0 mt-0.5">🌑</span>
+          <p className="text-xs text-purple-300/70 leading-relaxed">
+            Shadow Mode unlocks Dominion Duels with exclusive battle language and features.{' '}
+            <span className="text-purple-300 font-medium">7-day free trial available.</span>
+          </p>
+        </div>
+      )}
+
+      {hasBattles ? (
+        <div className="space-y-4">
+          {active.length > 0 && (
+            <>
+              {active.length === 1 ? (
+                <BattleMiniCard battle={active[0]} userId={userId} isShadow={isShadow} className="w-full" />
+              ) : active.length === 2 ? (
+                <div className="grid grid-cols-2 gap-3">
+                  {active.map(b => (
+                    <BattleMiniCard key={b.id} battle={b} userId={userId} isShadow={isShadow} />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex gap-4 overflow-x-auto pb-3 -mx-4 sm:-mx-8 px-4 sm:px-8 scrollbar-none">
+                  {active.map(b => (
+                    <BattleMiniCard key={b.id} battle={b} userId={userId} isShadow={isShadow} className="flex-shrink-0 w-60" />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {pending.length > 0 && (
+            <div className="space-y-2">
+              {pending.length > 0 && active.length > 0 && (
+                <p className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold">Negotiations</p>
+              )}
+              {pending.map(b => (
+                <NegotiationMiniCard key={b.id} battle={b} userId={userId} isShadow={isShadow} />
+              ))}
+            </div>
+          )}
+
           <Link
             to="/battles"
-            className={`mt-2.5 flex items-center justify-center gap-2 py-2 rounded-xl border text-[11px] font-medium transition-colors ${
+            className={`flex items-center justify-center gap-2 py-2 rounded-xl border text-[11px] font-medium transition-colors ${
               isShadow
                 ? 'border-red-900/30 text-red-500 hover:bg-red-950/20'
                 : 'border-white/[0.06] text-purple-400 hover:bg-white/[0.03]'
@@ -139,7 +238,7 @@ function BattlesSection({ battles, userId, isShadow }) {
           >
             ⚔️ Issue New Duel
           </Link>
-        </>
+        </div>
       ) : (
         <div
           className={`rounded-2xl border p-6 text-center space-y-3 ${
@@ -162,6 +261,58 @@ function BattlesSection({ battles, userId, isShadow }) {
         </div>
       )}
     </section>
+  );
+}
+
+/* ─── Inline habit check row ────────────────────────────────────────── */
+function HabitCheckRow({ habit, isShadow, onComplete }) {
+  const [done, setDone] = useState(!!habit.completed_today);
+  const [busy, setBusy] = useState(false);
+
+  async function handleCheck() {
+    if (done || busy) return;
+    setDone(true); // optimistic — show checkmark immediately
+    setBusy(true);
+    const result = await onComplete(habit.id);
+    if (!result) setDone(false); // revert on failure
+    setBusy(false);
+  }
+
+  return (
+    <button
+      onClick={handleCheck}
+      disabled={done || busy}
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all ${
+        done
+          ? isShadow
+            ? 'border-red-900/30 bg-red-950/10 cursor-default'
+            : 'border-green-900/30 bg-green-950/10 cursor-default'
+          : 'border-white/[0.07] bg-white/[0.02] hover:border-white/[0.14] hover:bg-white/[0.04] active:scale-[0.99]'
+      }`}
+    >
+      {/* Checkbox */}
+      <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
+        done
+          ? isShadow ? 'bg-red-700 border-red-600' : 'bg-green-600 border-green-500'
+          : 'border-white/20 bg-transparent'
+      }`}>
+        {done && <svg viewBox="0 0 12 12" width="10" height="10" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+        {busy && <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse" />}
+      </div>
+
+      {/* Icon + name */}
+      <span className="text-base shrink-0 select-none">{habit.icon}</span>
+      <span className={`text-sm font-medium truncate flex-1 ${done ? 'line-through opacity-50' : 'text-gray-200'}`}>
+        {habit.name}
+      </span>
+
+      {/* Done badge */}
+      {done && (
+        <span className={`text-[10px] font-bold shrink-0 ${isShadow ? 'text-red-400' : 'text-green-400'}`}>
+          {isShadow ? '✓ Done' : '✓'}
+        </span>
+      )}
+    </button>
   );
 }
 
@@ -219,12 +370,12 @@ function MissionSection({ habits, onComplete, isShadow }) {
           </Link>
         </div>
       ) : (
-        <div className="space-y-2">
-          {habits.map(h => (
-            <HabitCard
+        <div className="space-y-1.5">
+          {habits.filter(h => !h.completed_today).map(h => (
+            <HabitCheckRow
               key={h.id}
               habit={h}
-              completedToday={!!h.completed_today}
+              isShadow={isShadow}
               onComplete={onComplete}
             />
           ))}
@@ -280,6 +431,8 @@ export default function Dashboard() {
   const [xpFlash, setXpFlash] = useState(false);
   const [levelUp, setLevelUp] = useState(null);
   const [stageUp, setStageUp] = useState(null);
+  const [toast, setToast]     = useState(null);
+  const toastTimer            = useRef(null);
   const prevLevelRef = useRef(null);
   const xpFlashTimer = useRef(null);
 
@@ -305,7 +458,16 @@ export default function Dashboard() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  function showToast(msg) {
+    setToast(msg);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 3000);
+  }
+
   async function handleComplete(habitId) {
+    // Optimistic update — mark complete immediately so the row disappears at once
+    setHabits(prev => prev.map(h => h.id === habitId ? { ...h, completed_today: 1 } : h));
+
     try {
       const { data } = await client.post(`/habits/${habitId}/complete`);
       updateUser({ level: data.level });
@@ -324,7 +486,6 @@ export default function Dashboard() {
         current_streak: data.streak,
         habits_completed_today: prev.habits_completed_today + 1,
       } : prev);
-      setHabits(prev => prev.map(h => h.id === habitId ? { ...h, completed_today: 1 } : h));
 
       if (didLevelUp) {
         prevLevelRef.current = data.level;
@@ -342,6 +503,9 @@ export default function Dashboard() {
       }
       return data;
     } catch {
+      // Revert optimistic update and notify user
+      setHabits(prev => prev.map(h => h.id === habitId ? { ...h, completed_today: 0 } : h));
+      showToast('Failed to save — tap to retry');
       return null;
     }
   }
@@ -365,6 +529,16 @@ export default function Dashboard() {
       />
 
       <NavHeader level={currentLevel} />
+
+      {/* Error toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 z-50 pointer-events-none"
+          style={{ transform: 'translateX(-50%)', animation: 'fadeInUp 150ms ease' }}>
+          <div className="bg-gray-900 border border-red-800/60 text-red-400 text-xs font-medium px-4 py-2.5 rounded-xl shadow-lg whitespace-nowrap">
+            {toast}
+          </div>
+        </div>
+      )}
 
       {/* Drift dots */}
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden z-0">
@@ -402,6 +576,7 @@ export default function Dashboard() {
               xpTotal={stats?.xp_total ?? 0}
               rank={rank}
               equippedTitle={stats?.equipped_title}
+              isShadow={isShadow}
             />
 
             {/* 2. Active Battles — hero section */}

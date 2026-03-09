@@ -197,13 +197,13 @@ export default function AnalyticsPage() {
         ) : locked ? (
           <div className="glass-card rounded-2xl border border-purple-700/40 p-8 text-center">
             <div className="text-4xl mb-3">📊</div>
-            <h2 className="text-white font-bold mb-2">Pro Feature</h2>
-            <p className="text-gray-400 text-sm mb-4">Upgrade to unlock detailed habit analytics and AI coaching.</p>
+            <h2 className="text-white font-bold mb-2">Warlord Pass Required</h2>
+            <p className="text-gray-400 text-sm mb-4">Unlock detailed habit analytics and AI coaching with the Warlord Pass.</p>
             <button
               onClick={() => navigate('/upgrade')}
               className="bg-purple-600 hover:bg-purple-500 text-white font-bold px-6 py-2.5 rounded-xl transition-colors"
             >
-              Upgrade — $7/mo
+              ⚔️ Get Warlord Pass — $4.99/mo
             </button>
           </div>
         ) : (

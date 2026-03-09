@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useMode } from '../contexts/ModeContext.jsx';
@@ -22,9 +23,8 @@ function CloseIcon() {
 }
 
 const MORE_ITEMS = [
-  { to: '/battles',  icon: '⚔️', id: 'nav.battles'   },
-  { to: '/analytics',icon: '📊', id: 'nav.analytics'  },
-  { to: '/titles',   icon: '🏅', id: 'nav.titles'     },
+  { to: '/analytics',   icon: '📊', id: 'nav.analytics'  },
+  { to: '/titles',      icon: '🏅', id: 'nav.titles'     },
   { to: '/leaderboard', icon: '🏆', id: 'nav.leaderboard' },
 ];
 
@@ -49,7 +49,7 @@ function MoreDropdown({ isShadow }) {
         aria-expanded={open}
         aria-haspopup="true"
       >
-        {isShadow ? 'Arsenal' : 'More'}
+        <ModeText id="nav.more" />
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"
           style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 150ms' }}>
           <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -79,11 +79,28 @@ function MoreDropdown({ isShadow }) {
 }
 
 export default function NavHeader({ level }) {
-  const { user, logout, isSubscribed } = useAuth();
-  const { mode } = useMode();
+  const { user, logout } = useAuth();
+  const { mode, entitlements } = useMode();
   const isShadow = mode === 'SHADOW';
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    let rafId = null;
+    function onScroll() {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        setScrolled(window.scrollY > 10);
+        rafId = null;
+      });
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, []);
 
   function handleLogout() {
     setMenuOpen(false);
@@ -93,64 +110,117 @@ export default function NavHeader({ level }) {
 
   function close() { setMenuOpen(false); }
 
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [menuOpen]);
+
+  const showTrialExpiredBanner = entitlements.trialStarted && !entitlements.shadowAccess && !entitlements.warlordPass && !isShadow;
+
   return (
-    <header className="relative border-b border-white/10 sticky top-0 backdrop-blur-md bg-white/[0.03] z-50">
-      <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between gap-2">
+    <header className="sticky top-0 z-50">
+      <div
+        className={`relative border-b transition-colors duration-200 ${
+          scrolled
+            ? 'border-white/10 bg-black/80 backdrop-blur-md'
+            : 'border-white/10 backdrop-blur-md bg-white/[0.03]'
+        }`}
+      >
+        <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between gap-2">
 
-        {/* Logo + level badge */}
-        <div className="flex items-center gap-2 shrink-0">
-          <Link to="/dashboard" className="text-lg font-bold text-white tracking-tight logo-glow">
-            🔥 Vivify
-          </Link>
-          <span className="level-badge text-xs bg-purple-900/50 border border-purple-700/60 text-purple-300 px-2 py-0.5 rounded-full tabular-nums">
-            Lv.{level}
-          </span>
-        </div>
-
-        {/* Desktop nav — hidden on mobile */}
-        <nav className="hidden sm:flex items-center gap-5 text-sm">
-          <Link to="/dashboard" className="text-gray-400 hover:text-white transition-colors">
-            <ModeText id="nav.dashboard" />
-          </Link>
-          <Link to="/habits" className="text-gray-400 hover:text-white transition-colors">
-            <ModeText id="nav.habits" />
-          </Link>
-          <Link to="/battles" className="text-gray-400 hover:text-white transition-colors">
-            <ModeText id="nav.battles" />
-          </Link>
-          <MoreDropdown isShadow={isShadow} />
-          <ModeToggle />
-          {!isSubscribed && (
-            <Link to="/upgrade" className="text-purple-400 hover:text-purple-300 transition-colors">Upgrade</Link>
-          )}
-          <button onClick={handleLogout} className="text-gray-500 hover:text-red-400 transition-colors">
-            Logout
-          </button>
-        </nav>
-
-        {/* Mobile hamburger button — 44×44 touch target */}
-        <button
-          onClick={() => setMenuOpen(m => !m)}
-          className="sm:hidden w-11 h-11 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
-          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-          aria-expanded={menuOpen}
-        >
-          {menuOpen ? <CloseIcon /> : <HamburgerIcon />}
-        </button>
-      </div>
-
-      {/* Mobile slide-down menu */}
-      {menuOpen && (
-        <div className="sm:hidden absolute left-0 right-0 top-full backdrop-blur-md bg-gray-950/95 border-b border-white/10 anim-menu-slide shadow-xl z-50">
-          {/* User info */}
-          <div className="px-4 py-3 border-b border-gray-800/60 bg-gray-900/50">
-            <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-0.5">Signed in as</p>
-            <p className="text-sm font-semibold text-gray-200">{user?.username}</p>
+          {/* Logo + level badge */}
+          <div className="flex items-center gap-2 shrink-0">
+            <Link to="/dashboard" className="text-lg font-bold text-white tracking-tight logo-glow">
+              🔥 Vivify
+            </Link>
+            <span className="level-badge text-xs bg-purple-900/50 border border-purple-700/60 text-purple-300 px-2 py-0.5 rounded-full tabular-nums">
+              Lv.{level}
+            </span>
+            {entitlements.shadowTrialDaysLeft > 0 && !entitlements.warlordPass && (
+              <span className="hidden sm:inline text-[10px] text-amber-400/70 border border-amber-500/20 px-1.5 py-0.5 rounded-md">
+                Shadow Trial · {entitlements.shadowTrialDaysLeft}d
+              </span>
+            )}
           </div>
 
-          {/* Nav links — full-width, 52px touch targets */}
-          <nav className="px-2 py-2">
-            <div className="px-3 py-2 mb-1">
+          {/* Desktop nav — hidden on mobile */}
+          <nav className="hidden sm:flex items-center gap-5 text-sm">
+            <Link to="/dashboard" className="text-gray-400 hover:text-white transition-colors">
+              <ModeText id="nav.dashboard" />
+            </Link>
+            <Link to="/habits" className="text-gray-400 hover:text-white transition-colors">
+              <ModeText id="nav.habits" />
+            </Link>
+            <Link to="/battles" className="text-gray-400 hover:text-white transition-colors">
+              <ModeText id="nav.battles" />
+            </Link>
+            <MoreDropdown isShadow={isShadow} />
+            <ModeToggle />
+            {entitlements.warlordPass ? (
+              <Link to="/upgrade" className="text-xs font-bold px-2 py-0.5 rounded-md bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/30 transition-colors">
+                WARLORD
+              </Link>
+            ) : (
+              <Link to="/upgrade" className={`hover:opacity-80 transition-colors text-sm ${isShadow ? 'text-red-400' : 'text-purple-400'}`}>
+                Armoury
+              </Link>
+            )}
+            <button onClick={handleLogout} className="text-gray-500 hover:text-red-400 transition-colors">
+              Logout
+            </button>
+          </nav>
+
+          {/* Mobile hamburger button */}
+          <button
+            onClick={() => setMenuOpen(m => !m)}
+            className="sm:hidden w-11 h-11 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+            aria-label="Open menu"
+            aria-expanded={menuOpen}
+          >
+            <HamburgerIcon />
+          </button>
+        </div>
+
+      </div>
+
+      {/* Mobile full-screen menu — rendered into document.body via portal */}
+      {menuOpen && ReactDOM.createPortal(
+        <div
+          style={{
+            backgroundColor: '#05020f',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 99999,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          {/* Header row: signed in as + close button */}
+          <div className="flex items-center justify-between px-4 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+            <div>
+              <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-0.5">Signed in as</p>
+              <p className="text-sm font-semibold text-gray-200">{user?.username}</p>
+            </div>
+            <button
+              onClick={close}
+              className="w-10 h-10 flex items-center justify-center rounded-lg text-gray-400 hover:text-white transition-colors"
+              style={{ background: 'rgba(255,255,255,0.06)' }}
+              aria-label="Close menu"
+            >
+              <CloseIcon />
+            </button>
+          </div>
+
+          {/* Nav links */}
+          <nav style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+            <div style={{ padding: '8px 12px 12px' }}>
               <ModeToggle />
             </div>
             {[
@@ -165,30 +235,56 @@ export default function NavHeader({ level }) {
                 key={item.to}
                 to={item.to}
                 onClick={close}
-                className="flex items-center gap-3 px-3 py-3.5 rounded-xl text-gray-300 hover:bg-gray-800 active:bg-gray-700 transition-colors text-sm font-medium"
+                className="flex items-center gap-3 text-gray-300 hover:text-white transition-colors text-base font-medium"
+                style={{ padding: '16px 12px', borderRadius: '12px', display: 'flex', alignItems: 'center' }}
               >
-                <span className="text-base w-6 text-center">{item.icon}</span>
+                <span style={{ fontSize: '20px', width: '28px', textAlign: 'center' }}>{item.icon}</span>
                 <ModeText id={item.id} />
               </Link>
             ))}
-            {!isSubscribed && (
+            {entitlements.warlordPass ? (
               <Link
                 to="/upgrade"
                 onClick={close}
-                className="flex items-center gap-3 px-3 py-3.5 rounded-xl text-purple-400 hover:bg-gray-800 active:bg-gray-700 transition-colors text-sm font-medium"
+                className="flex items-center gap-3 text-yellow-400 hover:text-yellow-300 transition-colors text-base font-medium"
+                style={{ padding: '16px 12px', borderRadius: '12px', display: 'flex', alignItems: 'center' }}
               >
-                <span className="text-base w-6 text-center">⚡</span>
-                Upgrade — $7/mo
+                <span style={{ fontSize: '20px', width: '28px', textAlign: 'center' }}>👑</span>
+                WARLORD — Active
+              </Link>
+            ) : (
+              <Link
+                to="/upgrade"
+                onClick={close}
+                className={`flex items-center gap-3 transition-colors text-base font-medium ${isShadow ? 'text-red-400 hover:text-red-300' : 'text-purple-400 hover:text-purple-300'}`}
+                style={{ padding: '16px 12px', borderRadius: '12px', display: 'flex', alignItems: 'center' }}
+              >
+                <span style={{ fontSize: '20px', width: '28px', textAlign: 'center' }}>⚔️</span>
+                <ModeText id="nav.armoury" />
               </Link>
             )}
             <button
               onClick={handleLogout}
-              className="flex items-center gap-3 w-full px-3 py-3.5 rounded-xl text-red-400 hover:bg-gray-800 active:bg-gray-700 transition-colors text-sm font-medium mt-1 border-t border-gray-800/60 pt-3"
+              className="flex items-center gap-3 w-full text-red-400 hover:text-red-300 transition-colors text-base font-medium"
+              style={{ padding: '16px 12px', borderRadius: '12px', marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.08)' }}
             >
-              <span className="text-base w-6 text-center">↩</span>
+              <span style={{ fontSize: '20px', width: '28px', textAlign: 'center' }}>↩</span>
               Sign Out
             </button>
           </nav>
+        </div>,
+        document.body
+      )}
+
+      {/* Shadow trial expired banner */}
+      {showTrialExpiredBanner && (
+        <div className="bg-purple-950/80 border-b border-purple-800/30 px-4 py-2 text-center">
+          <span className="text-xs text-purple-300/80">
+            Your Shadow trial ended.{' '}
+            <Link to="/upgrade" className="font-semibold text-purple-200 underline underline-offset-2 hover:text-white transition-colors">
+              Reclaim it →
+            </Link>
+          </span>
         </div>
       )}
     </header>
