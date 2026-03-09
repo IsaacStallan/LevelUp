@@ -202,6 +202,7 @@ router.get('/entitlements', verifyToken, async (req, res, next) => {
 
     res.json({
       warlordPass,
+      warlordPassExpires: user.warlord_pass_expires_at ?? null,
       shadowAccess,
       shadowTrialDaysLeft,
       trialStarted: !!user.shadow_mode_trial_started_at,

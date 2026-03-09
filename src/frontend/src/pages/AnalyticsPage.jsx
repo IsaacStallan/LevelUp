@@ -129,7 +129,7 @@ function rateColor(r) {
 }
 
 export default function AnalyticsPage() {
-  const { user }   = useAuth();
+  const { user, hasWarlordPass, refreshEntitlements } = useAuth();
   const navigate   = useNavigate();
   const [data, setData]               = useState(null);
   const [loading, setLoading]         = useState(true);
@@ -140,11 +140,32 @@ export default function AnalyticsPage() {
   const [insError, setInsError]       = useState('');
 
   useEffect(() => {
+    // Frontend pre-check: skip the API call if we already know pass is inactive
+    if (hasWarlordPass === false && user) {
+      // Still try the API in case frontend state is stale; backend is source of truth
+    }
     client.get('/analytics')
       .then(r => setData(r.data))
       .catch(err => { if (err.response?.status === 403) setLocked(true); })
       .finally(() => setLoading(false));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-fetch analytics and entitlements when user returns to tab (e.g. after purchase)
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === 'visible' && locked) {
+        refreshEntitlements();
+        setLoading(true);
+        setLocked(false);
+        client.get('/analytics')
+          .then(r => setData(r.data))
+          .catch(err => { if (err.response?.status === 403) setLocked(true); })
+          .finally(() => setLoading(false));
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [locked, refreshEntitlements]);
 
   async function fetchInsights() {
     setInsLoading(true);

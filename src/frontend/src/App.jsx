@@ -54,18 +54,18 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <ModeProvider>
-      <Fragment>
-        <BackgroundScene />
-        <BrowserRouter>
-          <AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <ModeProvider>
+          <Fragment>
+            <BackgroundScene />
             <div style={{ position: 'relative', zIndex: 2 }}>
               <AppRoutes />
               <InstallPrompt />
             </div>
-          </AuthProvider>
-        </BrowserRouter>
-      </Fragment>
-    </ModeProvider>
+          </Fragment>
+        </ModeProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import NavHeader from '../components/NavHeader.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
@@ -15,11 +16,24 @@ function checkoutUrl(base, email) {
 }
 
 export default function UpgradePage() {
-  const { user } = useAuth();
+  const { user, refreshEntitlements } = useAuth();
   const { mode, entitlements } = useMode();
   const isShadow = mode === 'SHADOW';
   const navigate = useNavigate();
-  const { warlordPass, shadowTrialDaysLeft, freezeTokens, forfeitTokens } = entitlements;
+  const { warlordPass, warlordPassExpires, shadowTrialDaysLeft, freezeTokens, forfeitTokens } = entitlements;
+
+  // Re-fetch entitlements when user returns to this tab after checkout
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === 'visible') refreshEntitlements();
+    }
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [refreshEntitlements]);
+
+  const expiryLabel = warlordPassExpires
+    ? new Date(warlordPassExpires).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+    : null;
 
   return (
     <div className="page-enter min-h-screen">
@@ -96,8 +110,11 @@ export default function UpgradePage() {
             )}
 
             {warlordPass ? (
-              <div className="w-full text-center bg-green-900/30 border border-green-700/40 text-green-400 py-2.5 rounded-xl text-sm font-semibold">
-                ✓ Warlord Pass Active
+              <div className="w-full bg-green-900/30 border border-green-700/40 text-green-400 py-2.5 rounded-xl text-sm font-semibold text-center space-y-0.5">
+                <p>✓ Warlord Pass Active</p>
+                {expiryLabel && (
+                  <p className="text-[11px] text-green-600 font-normal">Renews {expiryLabel}</p>
+                )}
               </div>
             ) : (
               <button

@@ -1,16 +1,8 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import client from '../api/client.js';
+import { useAuth } from './AuthContext.jsx';
 
 const ModeContext = createContext(null);
-
-const DEFAULT_ENTITLEMENTS = {
-  warlordPass: false,
-  shadowAccess: false,
-  shadowTrialDaysLeft: 0,
-  trialStarted: false,
-  freezeTokens: 0,
-  forfeitTokens: 0,
-};
 
 function ShadowUpgradeModal({ onClose }) {
   return (
@@ -47,10 +39,12 @@ function ShadowUpgradeModal({ onClose }) {
 }
 
 export function ModeProvider({ children }) {
+  // ModeProvider must be inside AuthProvider — it reads entitlements from AuthContext
+  const { entitlements, refreshEntitlements } = useAuth();
+
   const [mode, setMode] = useState(() => {
     try { return localStorage.getItem('vivify_mode') || 'LIGHT'; } catch { return 'LIGHT'; }
   });
-  const [entitlements, setEntitlements] = useState(DEFAULT_ENTITLEMENTS);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   useEffect(() => {
@@ -58,27 +52,17 @@ export function ModeProvider({ children }) {
     try { localStorage.setItem('vivify_mode', mode); } catch {}
   }, [mode]);
 
-  useEffect(() => {
-    if (!localStorage.getItem('levelup_token')) return;
-    client.get('/auth/entitlements')
-      .then(r => setEntitlements(r.data))
-      .catch(() => {});
-  }, []);
-
-  const refreshEntitlements = useCallback(() => {
-    if (!localStorage.getItem('levelup_token')) return;
-    client.get('/auth/entitlements')
-      .then(r => setEntitlements(r.data))
-      .catch(() => {});
-  }, []);
-
   const switchMode = useCallback(async (next) => {
+    // Pass holders always have shadow access — skip trial check
     if (next === 'SHADOW' && !entitlements.shadowAccess) {
       try {
         const { data } = await client.post('/auth/start-shadow-trial');
-        setEntitlements(prev => ({ ...prev, shadowAccess: true, shadowTrialDaysLeft: data.daysLeft }));
-        setMode('SHADOW');
-        client.patch('/auth/mode', { mode: 'SHADOW' }).catch(() => {});
+        // Refresh to pick up updated trial state
+        refreshEntitlements();
+        if (data.daysLeft > 0 || data.started) {
+          setMode('SHADOW');
+          client.patch('/auth/mode', { mode: 'SHADOW' }).catch(() => {});
+        }
       } catch (err) {
         if (err.response?.status === 403) {
           setShowUpgradeModal(true);
@@ -88,7 +72,7 @@ export function ModeProvider({ children }) {
     }
     setMode(next);
     client.patch('/auth/mode', { mode: next }).catch(() => {});
-  }, [entitlements.shadowAccess]);
+  }, [entitlements.shadowAccess, refreshEntitlements]);
 
   return (
     <ModeContext.Provider value={{ mode, switchMode, entitlements, refreshEntitlements }}>
