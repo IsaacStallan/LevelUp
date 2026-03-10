@@ -22,48 +22,126 @@ function getCharacter(level) {
 }
 
 /* ─── Identity Bar ─────────────────────────────────────────────────── */
-function IdentityBar({ character, username, level, streak, xpTotal, rank, equippedTitle, isShadow }) {
+function IdentityBar({ character, username, level, streak, xpTotal, rank, equippedTitle, isShadow, freezeTokens, onUseFreeze, freezing }) {
   return (
-    <div className="flex items-center justify-between gap-3 py-3 px-1">
-      {/* Left: character + name + level */}
-      <div className="flex items-center gap-2.5 min-w-0">
-        {isShadow && <span className="text-3xl leading-none select-none">{character.emoji}</span>}
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm font-bold text-white truncate max-w-[96px]">{username}</span>
-            <span className="text-[10px] bg-purple-900/50 border border-purple-700/50 text-purple-300 px-1.5 py-0.5 rounded-full tabular-nums shrink-0">
-              Lv.{level}
-            </span>
+    <div className="space-y-2 py-3 px-1">
+      <div className="flex items-center justify-between gap-3">
+        {/* Left: character + name + level */}
+        <div className="flex items-center gap-2.5 min-w-0">
+          {isShadow && <span className="text-3xl leading-none select-none">{character.emoji}</span>}
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-bold text-white truncate max-w-[96px]">{username}</span>
+              <span className="text-[10px] bg-purple-900/50 border border-purple-700/50 text-purple-300 px-1.5 py-0.5 rounded-full tabular-nums shrink-0">
+                Lv.{level}
+              </span>
+            </div>
+            {isShadow && equippedTitle && (
+              <p className="text-[10px] text-yellow-400 leading-tight truncate mt-0.5">{equippedTitle}</p>
+            )}
           </div>
-          {isShadow && equippedTitle && (
-            <p className="text-[10px] text-yellow-400 leading-tight truncate mt-0.5">{equippedTitle}</p>
-          )}
+        </div>
+
+        {/* Center: streak — glowing amber pill */}
+        <div
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full shrink-0 streak-pill"
+          style={{
+            background: 'rgba(251,146,60,0.12)',
+            border: '1px solid rgba(251,146,60,0.35)',
+            boxShadow: streak > 0 ? '0 0 12px rgba(251,146,60,0.25), 0 0 4px rgba(251,146,60,0.1)' : 'none',
+          }}
+        >
+          <span className="text-base leading-none">🔥</span>
+          <span className="text-sm font-black text-amber-300 tabular-nums">{streak}</span>
+          <span className="text-[11px] font-semibold text-amber-500/80">
+            {streak === 1 ? 'day' : 'day streak'}
+          </span>
+        </div>
+
+        {/* Right: XP + rank */}
+        <div className="text-right shrink-0">
+          <p className="text-sm font-bold text-yellow-300 tabular-nums">⚡{xpTotal.toLocaleString()}</p>
+          {rank && <p className="text-[10px] text-gray-500 mt-0.5">#{rank} globally</p>}
         </div>
       </div>
 
-      {/* Center: streak — glowing amber pill */}
-      <div
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full shrink-0 streak-pill"
-        style={{
-          background: 'rgba(251,146,60,0.12)',
-          border: '1px solid rgba(251,146,60,0.35)',
-          boxShadow: streak > 0 ? '0 0 12px rgba(251,146,60,0.25), 0 0 4px rgba(251,146,60,0.1)' : 'none',
-        }}
-      >
-        <span className="text-base leading-none">🔥</span>
-        <span className="text-sm font-black text-amber-300 tabular-nums">{streak}</span>
-        <span className="text-[11px] font-semibold text-amber-500/80">
-          {streak === 1 ? 'day' : 'day streak'}
-        </span>
-      </div>
-
-      {/* Right: XP + rank */}
-      <div className="text-right shrink-0">
-        <p className="text-sm font-bold text-yellow-300 tabular-nums">⚡{xpTotal.toLocaleString()}</p>
-        {rank && <p className="text-[10px] text-gray-500 mt-0.5">#{rank} globally</p>}
-      </div>
+      {/* Freeze token row — only shown when tokens exist */}
+      {freezeTokens > 0 && (
+        <div className="flex items-center justify-between gap-2 px-0.5">
+          <span className="text-[11px] text-blue-300/70 tabular-nums">
+            🧊 {freezeTokens} freeze token{freezeTokens !== 1 ? 's' : ''}
+          </span>
+          <button
+            onClick={onUseFreeze}
+            disabled={freezing}
+            className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 border border-blue-800/50 hover:border-blue-700/60 px-2.5 py-1 rounded-lg transition-all active:scale-95 disabled:opacity-50"
+          >
+            {freezing ? 'Freezing…' : 'Use Freeze'}
+          </button>
+        </div>
+      )}
     </div>
   );
+}
+
+/* ─── War Room theme helpers ────────────────────────────────────── */
+const WAR_ROOM_THEMES = [
+  { id: 'crimson', icon: '🔴', label: 'Crimson' },
+  { id: 'void',    icon: '⚫', label: 'Void'    },
+  { id: 'eclipse', icon: '🟣', label: 'Eclipse' },
+  { id: 'inferno', icon: '🟠', label: 'Inferno' },
+];
+
+function getWarRoomBg(theme) {
+  const bgs = {
+    crimson: 'linear-gradient(135deg, rgba(20,0,0,0.55), rgba(10,2,2,0.65))',
+    void:    'linear-gradient(135deg, rgba(0,0,2,0.92), rgba(2,2,8,0.96))',
+    eclipse: 'linear-gradient(135deg, rgba(8,4,28,0.92), rgba(15,8,45,0.96))',
+    inferno: 'linear-gradient(135deg, rgba(30,8,0,0.92), rgba(38,12,0,0.96))',
+  };
+  return bgs[theme] || bgs.crimson;
+}
+
+function WarRoomParticles({ theme }) {
+  if (theme === 'void') {
+    const particles = [
+      { size: 64, top: '15%', left: '8%',  dur: '7s',  delay: '0s',  sx: '12px'  },
+      { size: 90, top: '55%', left: '78%', dur: '9.5s', delay: '2.2s', sx: '-8px' },
+      { size: 48, top: '75%', left: '42%', dur: '6.5s', delay: '4s',  sx: '6px'  },
+    ];
+    return (
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
+        {particles.map((p, i) => (
+          <div key={i} className="void-smoke" style={{
+            width: p.size, height: p.size,
+            top: p.top, left: p.left,
+            '--dur': p.dur, '--delay': p.delay, '--sx': p.sx,
+          }} />
+        ))}
+      </div>
+    );
+  }
+  if (theme === 'eclipse') {
+    const stars = [
+      { top: '12%', left: '18%', dur: '2.1s',  delay: '0s'    },
+      { top: '28%', left: '72%', dur: '3.4s',  delay: '0.7s'  },
+      { top: '55%', left: '33%', dur: '2.8s',  delay: '1.5s'  },
+      { top: '78%', left: '62%', dur: '4.1s',  delay: '2.3s'  },
+      { top: '45%', left: '86%', dur: '3.0s',  delay: '0.4s'  },
+      { top: '22%', left: '52%', dur: '2.4s',  delay: '3.1s'  },
+      { top: '68%', left: '14%', dur: '3.8s',  delay: '1.9s'  },
+    ];
+    return (
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
+        {stars.map((s, i) => (
+          <div key={i} className="eclipse-star" style={{
+            top: s.top, left: s.left, '--dur': s.dur, '--delay': s.delay,
+          }} />
+        ))}
+      </div>
+    );
+  }
+  return null;
 }
 
 /* ─── Battle card (mini) ────────────────────────────────────────────── */
@@ -78,6 +156,13 @@ function BattleMiniCard({ battle, userId, isShadow, className = '' }) {
   const theirName  = isChallenger ? battle.opponent_username : battle.challenger_username;
   const remaining  = Math.max(0, Math.ceil((new Date(battle.ends_at) - Date.now()) / 86400000));
 
+  const theirHasWarlordPass = Boolean(isChallenger
+    ? battle.opponent_has_warlord_pass
+    : battle.challenger_has_warlord_pass);
+  const myHasWarlordPass = Boolean(isChallenger
+    ? battle.challenger_has_warlord_pass
+    : battle.opponent_has_warlord_pass);
+
   // My assigned habits = what the OTHER person wrote for me
   const myHabits = isChallenger
     ? parseHabitsJson(battle.opponent_assigned_habits)
@@ -85,17 +170,21 @@ function BattleMiniCard({ battle, userId, isShadow, className = '' }) {
 
   return (
     <div
-      className={`rounded-2xl border p-4 space-y-3 ${isShadow ? 'battle-card-glow-crimson' : 'battle-card-glow'} ${className}`}
+      className={`rounded-2xl border p-4 space-y-3 ${isShadow ? 'battle-card-glow-crimson' : 'battle-card-glow'} ${theirHasWarlordPass ? 'battle-opponent-warlord' : ''} ${className}`}
       style={{ background: 'linear-gradient(135deg, rgba(20,10,40,0.94), rgba(8,4,20,0.98))' }}
     >
       <div className="flex items-center justify-between">
         <span className="text-2xl battle-icon-pulse select-none">⚔️</span>
         <span className="text-[10px] text-gray-600 tabular-nums">{remaining}d left</span>
       </div>
-      <p className="text-xs text-gray-400 truncate">vs <span className="text-gray-200 font-semibold">{theirName ?? '?'}</span></p>
+      <p className="text-xs text-gray-400 truncate flex items-center gap-1">
+        vs{' '}
+        {theirHasWarlordPass && <span className="flame-flair" style={{ fontSize: '11px' }}>🔥</span>}
+        <span className="text-gray-200 font-semibold">{theirName ?? '?'}</span>
+      </p>
       <div className="flex items-end justify-between gap-2">
         <div className="text-left">
-          <p className={`text-5xl font-black tabular-nums leading-none ${isShadow ? 'text-red-400' : 'text-purple-300'}`}>
+          <p className={`text-5xl font-black tabular-nums leading-none ${isShadow ? 'text-red-400' : 'text-purple-300'} ${myHasWarlordPass ? 'warlord-score-flicker' : ''}`}>
             {myScore}<span className="text-2xl">%</span>
           </p>
           <p className="text-[10px] text-gray-600 mt-1">you</p>
@@ -125,12 +214,24 @@ function BattleMiniCard({ battle, userId, isShadow, className = '' }) {
 }
 
 /* ─── Negotiation mini-card ─────────────────────────────────────────── */
-function NegotiationMiniCard({ battle, userId, isShadow }) {
+function NegotiationMiniCard({ battle, userId, isShadow, onCancel }) {
   const isChallenger = battle.challenger_id === userId;
   const neg = battle.negotiation_status;
   const isCounterReceived = neg === 'countered' && isChallenger;
   const isCounterSent     = neg === 'countered' && !isChallenger;
   const theirName = isChallenger ? battle.opponent_username : battle.challenger_username;
+  const [cancelling, setCancelling] = useState(false);
+
+  async function handleCancel(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm(isShadow ? 'Withdraw this duel challenge?' : 'Cancel this battle invitation?')) return;
+    setCancelling(true);
+    try {
+      await client.delete(`/battles/${battle.id}/cancel`);
+      onCancel();
+    } catch { setCancelling(false); }
+  }
 
   return (
     <Link to={`/battles/${battle.id}`} className="block">
@@ -152,13 +253,24 @@ function NegotiationMiniCard({ battle, userId, isShadow }) {
               <p className="text-[10px] text-gray-600">{battle.duration_days}d · {battle.habit_category}</p>
             </div>
           </div>
-          {isCounterReceived ? (
-            <span className="text-[10px] font-bold text-amber-300 bg-amber-900/40 border border-amber-700/50 px-2 py-0.5 rounded-full whitespace-nowrap">🔄 RESPOND</span>
-          ) : isCounterSent ? (
-            <span className="text-[10px] text-gray-500 whitespace-nowrap">⚠️ Counter sent</span>
-          ) : (
-            <span className="text-[10px] text-gray-600 whitespace-nowrap">⏳ Awaiting</span>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            {isCounterReceived ? (
+              <span className="text-[10px] font-bold text-amber-300 bg-amber-900/40 border border-amber-700/50 px-2 py-0.5 rounded-full whitespace-nowrap">🔄 RESPOND</span>
+            ) : isCounterSent ? (
+              <span className="text-[10px] text-gray-500 whitespace-nowrap">⚠️ Counter sent</span>
+            ) : (
+              <span className="text-[10px] text-gray-600 whitespace-nowrap">⏳ Awaiting</span>
+            )}
+            {isChallenger && (
+              <button
+                onClick={handleCancel}
+                disabled={cancelling}
+                className="text-[10px] text-red-500/70 hover:text-red-400 border border-red-900/40 hover:border-red-800/60 px-2 py-0.5 rounded-md transition-all disabled:opacity-40"
+              >
+                {cancelling ? '…' : isShadow ? 'Withdraw' : 'Cancel'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </Link>
@@ -166,22 +278,54 @@ function NegotiationMiniCard({ battle, userId, isShadow }) {
 }
 
 /* ─── Battles section ───────────────────────────────────────────────── */
-function BattlesSection({ battles, userId, isShadow }) {
+function BattlesSection({ battles, userId, isShadow, onCancelBattle, shadowTheme, onSetTheme }) {
+  const { hasWarlordPass } = useAuth();
   const active  = battles.filter(b => b.status === 'active');
   const pending = battles.filter(b => b.status === 'pending');
   const accentClass = isShadow ? 'text-red-500' : 'text-purple-400';
-
   const hasBattles = active.length > 0 || pending.length > 0;
 
+  const sectionBg = isShadow ? getWarRoomBg(shadowTheme) : 'transparent';
+
   return (
-    <section>
+    <section className="relative rounded-2xl transition-colors duration-500"
+      style={{ background: sectionBg, padding: isShadow ? '14px 14px 10px' : '0' }}
+    >
+      {/* Ambient particles for void / eclipse themes */}
+      {isShadow && <WarRoomParticles theme={shadowTheme} />}
+
+      <div className="relative z-10">
       <div className="flex items-center justify-between mb-4">
         <h2 className={`text-xs font-bold uppercase tracking-widest ${accentClass}`}>
           {isShadow ? 'DUELS' : 'Battles'}
         </h2>
-        <Link to="/battles" className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
-          View all →
-        </Link>
+        <div className="flex items-center gap-2">
+          {/* Theme picker — shown to all shadow mode users */}
+          {isShadow && (
+            <div className="flex items-center gap-0.5">
+              {WAR_ROOM_THEMES.map(t => {
+                const canSelect = hasWarlordPass || t.id === 'crimson';
+                return (
+                  <button
+                    key={t.id}
+                    title={canSelect ? t.label : `${t.label} — Warlord Pass required`}
+                    onClick={() => canSelect && onSetTheme(t.id)}
+                    className={`text-sm leading-none p-1 rounded-md transition-all ${
+                      shadowTheme === t.id
+                        ? 'bg-white/10 ring-1 ring-white/20 scale-110'
+                        : 'opacity-40 hover:opacity-70'
+                    } ${!canSelect ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                  >
+                    {canSelect ? t.icon : '🔒'}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <Link to="/battles" className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
+            View all →
+          </Link>
+        </div>
       </div>
 
       {/* Light Mode teaser banner */}
@@ -223,7 +367,7 @@ function BattlesSection({ battles, userId, isShadow }) {
                 <p className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold">Negotiations</p>
               )}
               {pending.map(b => (
-                <NegotiationMiniCard key={b.id} battle={b} userId={userId} isShadow={isShadow} />
+                <NegotiationMiniCard key={b.id} battle={b} userId={userId} isShadow={isShadow} onCancel={onCancelBattle} />
               ))}
             </div>
           )}
@@ -260,6 +404,7 @@ function BattlesSection({ battles, userId, isShadow }) {
           </Link>
         </div>
       )}
+      </div>{/* end relative z-10 */}
     </section>
   );
 }
@@ -418,43 +563,45 @@ function StandingSection({ rank, onChallengeComplete, isShadow }) {
 
 /* ─── Main page ─────────────────────────────────────────────────────── */
 export default function Dashboard() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, userStats, refreshStats } = useAuth();
   const { mode } = useMode();
   const isShadow = mode === 'SHADOW';
   const navigate = useNavigate();
 
-  const [stats, setStats]   = useState(null);
   const [habits, setHabits] = useState([]);
   const [battles, setBattles] = useState([]);
-  const [rank, setRank]     = useState(null);
   const [loading, setLoading] = useState(true);
+  const [shadowTheme, setShadowTheme] = useState(() =>
+    localStorage.getItem('vivify_shadow_theme') || 'crimson'
+  );
+
+  function handleSetTheme(t) {
+    setShadowTheme(t);
+    localStorage.setItem('vivify_shadow_theme', t);
+  }
   const [xpFlash, setXpFlash] = useState(false);
   const [levelUp, setLevelUp] = useState(null);
   const [stageUp, setStageUp] = useState(null);
   const [toast, setToast]     = useState(null);
+  const [freezing, setFreezing] = useState(false);
   const toastTimer            = useRef(null);
   const prevLevelRef = useRef(null);
   const xpFlashTimer = useRef(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const [statsRes, habitsRes, battlesRes, lbRes] = await Promise.all([
-        client.get('/gamification/stats'),
+      const [habitsRes, battlesRes] = await Promise.all([
         client.get('/habits'),
         client.get('/battles/mine').catch(() => ({ data: [] })),
-        client.get('/leaderboard').catch(() => ({ data: [] })),
       ]);
-      setStats(statsRes.data);
-      prevLevelRef.current = statsRes.data.level;
       setHabits(habitsRes.data);
       setBattles(battlesRes.data);
-      setRank(lbRes.data.find(e => e.isCurrentUser)?.rank ?? null);
-    } catch (err) {
-      if (err.response?.status === 403) navigate('/upgrade');
+    } catch {
+      // ignore
     } finally {
       setLoading(false);
     }
-  }, [navigate]);
+  }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -464,6 +611,13 @@ export default function Dashboard() {
     toastTimer.current = setTimeout(() => setToast(null), 3000);
   }
 
+  // Seed prevLevelRef once userStats are loaded so we don't fire false level-ups
+  useEffect(() => {
+    if (prevLevelRef.current === null && userStats.level > 0) {
+      prevLevelRef.current = userStats.level;
+    }
+  }, [userStats.level]);
+
   async function handleComplete(habitId) {
     // Optimistic update — mark complete immediately so the row disappears at once
     setHabits(prev => prev.map(h => h.id === habitId ? { ...h, completed_today: 1 } : h));
@@ -472,23 +626,16 @@ export default function Dashboard() {
       const { data } = await client.post(`/habits/${habitId}/complete`);
       updateUser({ level: data.level });
 
-      const prevLevel  = prevLevelRef.current ?? 0;
+      const prevLevel  = prevLevelRef.current ?? userStats.level;
       const didLevelUp = data.level > prevLevel;
       const prevChar   = getCharacter(prevLevel);
       const newChar    = getCharacter(data.level);
       const didStageUp = didLevelUp && prevChar.title !== newChar.title;
 
-      setStats(prev => prev ? {
-        ...prev,
-        xp_total: data.xp_total,
-        level: data.level,
-        xp_to_next_level: 100 - (data.xp_total % 100),
-        current_streak: data.streak,
-        habits_completed_today: prev.habits_completed_today + 1,
-      } : prev);
+      prevLevelRef.current = data.level;
+      refreshStats(); // single source of truth — updates level, xp, streak everywhere
 
       if (didLevelUp) {
-        prevLevelRef.current = data.level;
         setTimeout(() => {
           setXpFlash(true);
           clearTimeout(xpFlashTimer.current);
@@ -498,8 +645,6 @@ export default function Dashboard() {
             else setLevelUp({ newLevel: data.level, character: newChar });
           }, 200);
         }, 600);
-      } else {
-        prevLevelRef.current = data.level;
       }
       return data;
     } catch {
@@ -510,7 +655,30 @@ export default function Dashboard() {
     }
   }
 
-  const currentLevel = stats?.level ?? user?.level ?? 1;
+  async function handleUseFreeze() {
+    if (freezing) return;
+    setFreezing(true);
+    try {
+      await client.post('/streaks/freeze');
+      refreshStats(); // updates freezeTokens + streak in context
+      showToast('🧊 Streak frozen for today!');
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Failed to use freeze token');
+    } finally {
+      setFreezing(false);
+    }
+  }
+
+  // Show victory bonus toast once after a duel win
+  useEffect(() => {
+    if (userStats.pendingVictoryBonus > 0) {
+      setToast(`👑 Victory Bonus: +${userStats.pendingVictoryBonus} XP`);
+      clearTimeout(toastTimer.current);
+      toastTimer.current = setTimeout(() => setToast(null), 4500);
+    }
+  }, [userStats.pendingVictoryBonus]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const currentLevel = userStats.level || user?.level || 1;
   const character    = getCharacter(currentLevel);
 
   return (
@@ -528,13 +696,17 @@ export default function Dashboard() {
         onDismiss={() => setStageUp(null)}
       />
 
-      <NavHeader level={currentLevel} />
+      <NavHeader />
 
       {/* Error toast */}
       {toast && (
         <div className="fixed bottom-6 left-1/2 z-50 pointer-events-none"
           style={{ transform: 'translateX(-50%)', animation: 'fadeInUp 150ms ease' }}>
-          <div className="bg-gray-900 border border-red-800/60 text-red-400 text-xs font-medium px-4 py-2.5 rounded-xl shadow-lg whitespace-nowrap">
+          <div className={`bg-gray-900 text-xs font-medium px-4 py-2.5 rounded-xl shadow-lg whitespace-nowrap ${
+            toast?.startsWith('👑')
+              ? 'border border-yellow-600/60 text-yellow-300'
+              : 'border border-red-800/60 text-red-400'
+          }`}>
             {toast}
           </div>
         </div>
@@ -572,21 +744,24 @@ export default function Dashboard() {
               character={character}
               username={user?.username ?? ''}
               level={currentLevel}
-              streak={stats?.current_streak ?? 0}
-              xpTotal={stats?.xp_total ?? 0}
-              rank={rank}
-              equippedTitle={stats?.equipped_title}
+              streak={userStats.streak}
+              xpTotal={userStats.xp}
+              rank={userStats.rank}
+              equippedTitle={userStats.title}
               isShadow={isShadow}
+              freezeTokens={userStats.freezeTokens}
+              onUseFreeze={handleUseFreeze}
+              freezing={freezing}
             />
 
             {/* 2. Active Battles — hero section */}
-            <BattlesSection battles={battles} userId={user?.id} isShadow={isShadow} />
+            <BattlesSection battles={battles} userId={user?.id} isShadow={isShadow} onCancelBattle={fetchData} shadowTheme={shadowTheme} onSetTheme={handleSetTheme} />
 
             {/* 3. Today's Mission */}
             <MissionSection habits={habits} onComplete={handleComplete} isShadow={isShadow} />
 
             {/* 4. Standing */}
-            <StandingSection rank={rank} onChallengeComplete={fetchData} isShadow={isShadow} />
+            <StandingSection rank={userStats.rank} onChallengeComplete={fetchData} isShadow={isShadow} />
           </>
         )}
       </main>

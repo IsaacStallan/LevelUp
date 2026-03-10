@@ -63,9 +63,15 @@ router.get('/stats', async (req, res, next) => {
     }
 
     const { rows: [userRow] } = await query(
-      'SELECT equipped_title, freeze_tokens, challenge_xp FROM users WHERE id = $1',
+      'SELECT equipped_title, freeze_tokens, challenge_xp, victory_bonus_pending FROM users WHERE id = $1',
       [userId]
     );
+
+    const pendingBonus = Number(userRow?.victory_bonus_pending ?? 0);
+    // Reset pending bonus immediately after reading so it only shows once
+    if (pendingBonus > 0) {
+      await query('UPDATE users SET victory_bonus_pending = 0 WHERE id = $1', [userId]);
+    }
 
     const challengeXp  = Number(userRow?.challenge_xp ?? 0);
     const xp_combined  = xp_total + challengeXp;
@@ -82,6 +88,7 @@ router.get('/stats', async (req, res, next) => {
       total_completions: Number(totalRow.total),
       equipped_title: userRow?.equipped_title || '',
       freeze_tokens: userRow?.freeze_tokens ?? 0,
+      pending_victory_bonus: pendingBonus,
     });
     return;
   } catch (err) {

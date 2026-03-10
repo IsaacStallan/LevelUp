@@ -25,7 +25,7 @@ export default function LeaderboardPage() {
 
   return (
     <div className="page-enter min-h-screen">
-      <NavHeader level={user?.level ?? 0} />
+      <NavHeader />
 
       <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4">
         {/* Header */}
@@ -85,6 +85,9 @@ export default function LeaderboardPage() {
                 {/* Name + title */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
+                    {entry.hasWarlordPass && (
+                      <span className="flame-flair shrink-0" style={{ fontSize: '13px' }}>🔥</span>
+                    )}
                     <span className={`text-sm font-semibold truncate ${entry.isCurrentUser ? 'text-purple-300' : 'text-white'}`}>
                       {entry.username}
                       {entry.isCurrentUser && <span className="text-xs text-purple-500 ml-1">(you)</span>}
@@ -98,9 +101,10 @@ export default function LeaderboardPage() {
                   <p className="text-[11px] text-gray-500 mt-0.5">Lv.{entry.level} · {entry.completions} completions</p>
                 </div>
 
-                {/* XP */}
+                {/* Wins */}
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-purple-400 tabular-nums">{entry.xp_total} XP</p>
+                  <p className="text-sm font-bold text-purple-400 tabular-nums">{entry.duel_wins}</p>
+                  <p className="text-[10px] text-gray-600">win{entry.duel_wins !== 1 ? 's' : ''}</p>
                 </div>
               </div>
             ))}

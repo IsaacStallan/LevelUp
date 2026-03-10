@@ -54,7 +54,7 @@ export function ModeProvider({ children }) {
 
   const switchMode = useCallback(async (next) => {
     // Pass holders always have shadow access — skip trial check
-    if (next === 'SHADOW' && !entitlements.shadowAccess) {
+    if (next === 'SHADOW' && !entitlements.hasShadowAccess) {
       try {
         const { data } = await client.post('/auth/start-shadow-trial');
         // Refresh to pick up updated trial state

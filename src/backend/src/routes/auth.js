@@ -179,35 +179,36 @@ router.get('/entitlements', verifyToken, async (req, res, next) => {
   try {
     const { rows: [user] } = await query(
       `SELECT warlord_pass_status, warlord_pass_expires_at, shadow_mode_trial_started_at,
-              freeze_tokens, battle_forfeit_tokens
+              freeze_tokens, battle_forfeit_tokens, duel_extensions
        FROM users WHERE id = $1`,
       [req.user.id]
     );
 
-    const warlordPass = user.warlord_pass_status === 'active' &&
+    const hasWarlordPass = user.warlord_pass_status === 'active' &&
       (!user.warlord_pass_expires_at || new Date(user.warlord_pass_expires_at) > new Date());
 
-    let shadowAccess = warlordPass;
+    let hasShadowAccess = hasWarlordPass;
     let shadowTrialDaysLeft = 0;
 
-    if (!shadowAccess && user.shadow_mode_trial_started_at) {
+    if (!hasShadowAccess && user.shadow_mode_trial_started_at) {
       const trialEnd = new Date(user.shadow_mode_trial_started_at);
       trialEnd.setDate(trialEnd.getDate() + 7);
       const msLeft = trialEnd - Date.now();
       if (msLeft > 0) {
-        shadowAccess = true;
+        hasShadowAccess = true;
         shadowTrialDaysLeft = Math.ceil(msLeft / 86400000);
       }
     }
 
     res.json({
-      warlordPass,
+      hasWarlordPass,
       warlordPassExpires: user.warlord_pass_expires_at ?? null,
-      shadowAccess,
+      hasShadowAccess,
       shadowTrialDaysLeft,
       trialStarted: !!user.shadow_mode_trial_started_at,
       freezeTokens: user.freeze_tokens ?? 0,
       forfeitTokens: user.battle_forfeit_tokens ?? 0,
+      duelExtensions: user.duel_extensions ?? 0,
     });
   } catch (err) {
     next(err);

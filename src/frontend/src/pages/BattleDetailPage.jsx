@@ -14,7 +14,7 @@ const CATEGORY_LABELS = {
 
 export default function BattleDetailPage() {
   const { id } = useParams();
-  const { user } = useAuth();
+  const { user, entitlements, refreshEntitlements } = useAuth();
   const { mode } = useMode();
   const isShadow = mode === 'SHADOW';
   const navigate = useNavigate();
@@ -28,6 +28,9 @@ export default function BattleDetailPage() {
   const [completing, setCompleting] = useState(null); // habit_name in flight
   const [acting, setActing]     = useState(false);
   const [verifying, setVerifying] = useState(null); // proof_id being actioned
+  const [showForfeitModal, setShowForfeitModal] = useState(false);
+  const [forfeiting, setForfeiting] = useState(false);
+  const [extending, setExtending] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -85,6 +88,35 @@ export default function BattleDetailPage() {
     } finally { setActing(false); }
   }
 
+  async function handleForfeitToken() {
+    setForfeiting(true);
+    setError('');
+    try {
+      await client.post(`/battles/${id}/forfeit-token`);
+      refreshEntitlements();
+      navigate('/battles');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to forfeit');
+      setShowForfeitModal(false);
+    } finally {
+      setForfeiting(false);
+    }
+  }
+
+  async function handleExtend() {
+    setExtending(true);
+    setError('');
+    try {
+      const { data } = await client.post(`/battles/${id}/extend`);
+      setBattle(prev => ({ ...prev, ends_at: data.ends_at }));
+      refreshEntitlements();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to extend');
+    } finally {
+      setExtending(false);
+    }
+  }
+
   function copyShareLink() {
     const url = `${window.location.origin}/battles/${id}`;
     navigator.clipboard.writeText(url).then(() => {
@@ -96,7 +128,7 @@ export default function BattleDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen">
-        <NavHeader level={0} />
+        <NavHeader />
         <div className="flex items-center justify-center h-64">
           <p className="text-gray-500">Loading battle…</p>
         </div>
@@ -116,6 +148,11 @@ export default function BattleDetailPage() {
   const myName     = isChallenger ? battle.challenger_username : battle.opponent_username;
   const theirName  = isChallenger ? battle.opponent_username  : battle.challenger_username;
 
+  const theirHasWarlordPass = Boolean(isChallenger
+    ? battle.opponent_has_warlord_pass
+    : battle.challenger_has_warlord_pass);
+  const myHasWarlordPass = entitlements.hasWarlordPass;
+
   const isAwaiting  = battle.status === 'pending' && neg === 'pending';
   const isForfeited = neg === 'forfeited';
 
@@ -125,7 +162,7 @@ export default function BattleDetailPage() {
 
   return (
     <div className="min-h-screen">
-      <NavHeader level={Math.min(Math.floor((user?.xp_total ?? 0) / 100), 100)} />
+      <NavHeader />
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
 
         <Link to="/battles" className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors">
@@ -141,8 +178,10 @@ export default function BattleDetailPage() {
                 {cat?.label} · {battle.duration_days}d
               </h1>
             </div>
-            <p className="text-sm text-gray-500">
-              vs {isChallenger ? battle.opponent_username ?? 'Awaiting opponent' : battle.challenger_username}
+            <p className="text-sm text-gray-500 flex items-center gap-1">
+              vs{' '}
+              {theirHasWarlordPass && <span className="flame-flair" style={{ fontSize: '12px' }}>🔥</span>}
+              {isChallenger ? battle.opponent_username ?? 'Awaiting opponent' : battle.challenger_username}
             </p>
           </div>
           <button onClick={copyShareLink}
@@ -180,13 +219,16 @@ export default function BattleDetailPage() {
             <div className="flex items-end justify-between gap-4 mb-4">
               <div className="text-center flex-1">
                 <p className="text-xs text-gray-500 mb-1">{myName} (you)</p>
-                <p className={`text-5xl font-black tabular-nums ${isShadow ? 'text-red-400' : 'text-purple-300'}`}>
+                <p className={`text-5xl font-black tabular-nums ${isShadow ? 'text-red-400' : 'text-purple-300'} ${myHasWarlordPass ? 'warlord-score-flicker' : ''}`}>
                   {myScore}<span className="text-2xl">%</span>
                 </p>
               </div>
               <span className="text-lg text-gray-700 font-black pb-2">VS</span>
               <div className="text-center flex-1">
-                <p className="text-xs text-gray-500 mb-1">{theirName ?? '?'}</p>
+                <p className="text-xs text-gray-500 mb-1 flex items-center justify-center gap-1">
+                  {theirHasWarlordPass && <span className="flame-flair" style={{ fontSize: '11px' }}>🔥</span>}
+                  {theirName ?? '?'}
+                </p>
                 <p className="text-5xl font-black tabular-nums text-gray-400">
                   {theirScore}<span className="text-2xl">%</span>
                 </p>
@@ -218,6 +260,64 @@ export default function BattleDetailPage() {
                 <p className="text-sm text-gray-500">{myScore}% vs {theirScore}%</p>
               </>
             )}
+          </div>
+        )}
+
+        {/* Battle actions — forfeit token + duel extension */}
+        {battle.status === 'active' && (
+          <div className="flex gap-2 flex-wrap">
+            {entitlements.duelExtensions > 0 && remaining !== null && remaining <= 3 && (
+              <button
+                onClick={handleExtend}
+                disabled={extending}
+                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-blue-800/50 text-blue-400 hover:bg-blue-900/20 transition-all disabled:opacity-50"
+              >
+                {extending ? 'Extending…' : `⏳ Extend +3 Days (${entitlements.duelExtensions} left)`}
+              </button>
+            )}
+            {entitlements.forfeitTokens > 0 && (
+              <button
+                onClick={() => setShowForfeitModal(true)}
+                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-red-900/50 text-red-500 hover:bg-red-950/20 transition-all"
+              >
+                🏳️ Forfeit Battle ({entitlements.forfeitTokens} token{entitlements.forfeitTokens !== 1 ? 's' : ''})
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Forfeit token confirmation modal */}
+        {showForfeitModal && (
+          <div
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
+          >
+            <div
+              className="w-full max-w-xs rounded-2xl border border-red-900/50 p-6 space-y-4 text-center"
+              style={{ background: 'linear-gradient(135deg, rgba(30,10,20,0.98), rgba(10,5,15,0.99))' }}
+            >
+              <p className="text-4xl">🏳️</p>
+              <h2 className="text-lg font-bold text-white">Forfeit Battle?</h2>
+              <p className="text-sm text-gray-400 leading-relaxed">
+                This will end the battle and count as a loss. One forfeit token will be used.
+              </p>
+              <div className="flex gap-3 pt-1">
+                <button
+                  onClick={() => setShowForfeitModal(false)}
+                  disabled={forfeiting}
+                  className="flex-1 py-2.5 rounded-xl border border-white/10 text-gray-400 text-sm hover:bg-white/5 transition-all disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleForfeitToken}
+                  disabled={forfeiting}
+                  className="flex-1 py-2.5 rounded-xl bg-red-700 hover:bg-red-600 text-white text-sm font-bold transition-all disabled:opacity-50"
+                >
+                  {forfeiting ? 'Forfeiting…' : 'Confirm Forfeit'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

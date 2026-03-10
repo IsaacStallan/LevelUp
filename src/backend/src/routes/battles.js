@@ -80,6 +80,32 @@ async function recalculateScore(battle, userId) {
   return score;
 }
 
+// ── Battle completion helper ────────────────────────────────────────────────────
+async function completeBattle(battle) {
+  let winnerId = null;
+  if (battle.challenger_score !== battle.opponent_score) {
+    winnerId = battle.challenger_score > battle.opponent_score
+      ? battle.challenger_id
+      : battle.opponent_id;
+  }
+  await query(
+    `UPDATE battles SET status = 'completed', winner_id = $1 WHERE id = $2`,
+    [winnerId, battle.id]
+  );
+  if (winnerId) {
+    const xpBonus = 50 * battle.duration_days;
+    await query(
+      `UPDATE users SET duel_wins = duel_wins + 1,
+         challenge_xp = challenge_xp + $1,
+         victory_bonus_pending = victory_bonus_pending + $1
+       WHERE id = $2`,
+      [xpBonus, winnerId]
+    );
+    console.log('[completeBattle] battle', battle.id, 'won by', winnerId, '— +', xpBonus, 'XP');
+  }
+  return winnerId;
+}
+
 // ── Routes ─────────────────────────────────────────────────────────────────────
 
 // POST /api/battles/create — authenticated
@@ -182,15 +208,128 @@ router.post('/forfeit', verifyToken, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// POST /api/battles/:id/forfeit-token — use a forfeit token to concede an active battle
+router.post('/:id/forfeit-token', verifyToken, async (req, res, next) => {
+  try {
+    const { rows: [battle] } = await query(
+      'SELECT * FROM battles WHERE id = $1 AND (challenger_id = $2 OR opponent_id = $2)',
+      [req.params.id, req.user.id]
+    );
+    if (!battle) return res.status(404).json({ error: 'Battle not found' });
+    if (battle.status !== 'active') return res.status(409).json({ error: 'Battle is not active' });
+
+    const { rows: [user] } = await query(
+      'SELECT battle_forfeit_tokens FROM users WHERE id = $1', [req.user.id]
+    );
+    if (!user || user.battle_forfeit_tokens < 1) {
+      return res.status(400).json({ error: 'No forfeit tokens remaining' });
+    }
+
+    const opponentId = battle.challenger_id === req.user.id
+      ? battle.opponent_id
+      : battle.challenger_id;
+
+    const { rows: [updated] } = await query(
+      `UPDATE battles SET status = 'completed', winner_id = $1 WHERE id = $2 RETURNING *`,
+      [opponentId, battle.id]
+    );
+
+    // Award duel win + XP bonus to the opponent (winner)
+    const xpBonus = 50 * battle.duration_days;
+    await query(
+      `UPDATE users SET duel_wins = duel_wins + 1,
+         challenge_xp = challenge_xp + $1,
+         victory_bonus_pending = victory_bonus_pending + $1
+       WHERE id = $2`,
+      [xpBonus, opponentId]
+    );
+
+    await query(
+      'UPDATE users SET battle_forfeit_tokens = battle_forfeit_tokens - 1 WHERE id = $1',
+      [req.user.id]
+    );
+
+    const { rows: [updatedUser] } = await query(
+      'SELECT battle_forfeit_tokens FROM users WHERE id = $1', [req.user.id]
+    );
+
+    console.log('[forfeit-token] battle', battle.id, 'forfeited by user', req.user.id, '— remaining tokens:', updatedUser.battle_forfeit_tokens);
+    res.json({ battle: updated, forfeitTokensRemaining: updatedUser.battle_forfeit_tokens });
+  } catch (err) { next(err); }
+});
+
+// POST /api/battles/:id/extend — use a duel extension to add 3 days to ends_at
+router.post('/:id/extend', verifyToken, async (req, res, next) => {
+  try {
+    const { rows: [battle] } = await query(
+      'SELECT * FROM battles WHERE id = $1 AND (challenger_id = $2 OR opponent_id = $2)',
+      [req.params.id, req.user.id]
+    );
+    if (!battle) return res.status(404).json({ error: 'Battle not found' });
+    if (battle.status !== 'active') return res.status(409).json({ error: 'Battle is not active' });
+
+    const { rows: [user] } = await query(
+      'SELECT duel_extensions FROM users WHERE id = $1', [req.user.id]
+    );
+    if (!user || user.duel_extensions < 1) {
+      return res.status(400).json({ error: 'No duel extensions remaining' });
+    }
+
+    const newEndsAt = new Date(battle.ends_at);
+    newEndsAt.setDate(newEndsAt.getDate() + 3);
+
+    const { rows: [updated] } = await query(
+      `UPDATE battles SET ends_at = $1 WHERE id = $2 RETURNING *`,
+      [newEndsAt, battle.id]
+    );
+
+    await query(
+      'UPDATE users SET duel_extensions = duel_extensions - 1 WHERE id = $1',
+      [req.user.id]
+    );
+
+    const { rows: [updatedUser] } = await query(
+      'SELECT duel_extensions FROM users WHERE id = $1', [req.user.id]
+    );
+
+    console.log('[extend] battle', battle.id, 'extended by user', req.user.id, 'to', newEndsAt, '— remaining extensions:', updatedUser.duel_extensions);
+    res.json({ battle: updated, duelExtensionsRemaining: updatedUser.duel_extensions });
+  } catch (err) { next(err); }
+});
+
 // GET /api/battles/mine — authenticated
 router.get('/mine', verifyToken, async (req, res, next) => {
   try {
+    // Auto-complete any expired active battles — wrapped so a failure never blocks the list
+    try {
+      const { rows: expired } = await query(
+        `SELECT * FROM battles
+         WHERE (challenger_id = $1 OR opponent_id = $1)
+           AND status = 'active' AND ends_at < NOW()`,
+        [req.user.id]
+      );
+      for (const battle of expired) {
+        await completeBattle(battle);
+      }
+    } catch (completionErr) {
+      console.error('[GET /mine] auto-complete error:', completionErr.message, completionErr.stack);
+    }
+
     const { rows } = await query(
-      `SELECT * FROM battles WHERE challenger_id = $1 OR opponent_id = $1 ORDER BY created_at DESC`,
+      `SELECT b.*,
+        (c.warlord_pass_status = 'active' AND (c.warlord_pass_expires_at IS NULL OR c.warlord_pass_expires_at > NOW()))::boolean AS challenger_has_warlord_pass,
+        (o.warlord_pass_status = 'active' AND (o.warlord_pass_expires_at IS NULL OR o.warlord_pass_expires_at > NOW()))::boolean AS opponent_has_warlord_pass
+       FROM battles b
+       LEFT JOIN users c ON c.id = b.challenger_id
+       LEFT JOIN users o ON o.id = b.opponent_id
+       WHERE b.challenger_id = $1 OR b.opponent_id = $1 ORDER BY b.created_at DESC`,
       [req.user.id]
     );
     res.json(rows);
-  } catch (err) { next(err); }
+  } catch (err) {
+    console.error('[GET /mine] fatal error:', err.message, err.stack);
+    next(err);
+  }
 });
 
 // POST /api/battles/:id/complete-habit — log today's habit completion (no photo)
@@ -414,11 +553,37 @@ router.get('/:id/progress', verifyToken, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// GET /api/battles/admin/list — all battles (admin only)
+// NOTE: must stay before GET /:id to avoid route conflict
+router.get('/admin/list', async (req, res, next) => {
+  if (req.headers['x-cron-secret'] !== process.env.CRON_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const { rows } = await query(
+      `SELECT b.id, b.challenger_id, b.opponent_id,
+              c.username AS challenger_username, o.username AS opponent_username,
+              b.status, b.created_at
+       FROM battles b
+       LEFT JOIN users c ON c.id = b.challenger_id
+       LEFT JOIN users o ON o.id = b.opponent_id
+       ORDER BY b.created_at DESC`
+    );
+    res.json(rows);
+  } catch (err) { next(err); }
+});
+
 // GET /api/battles/:id — enriched battle details
 router.get('/:id', verifyToken, async (req, res, next) => {
   try {
     const { rows: [battle] } = await query(
-      'SELECT * FROM battles WHERE id = $1 AND (challenger_id = $2 OR opponent_id = $2)',
+      `SELECT b.*,
+        (c.warlord_pass_status = 'active' AND (c.warlord_pass_expires_at IS NULL OR c.warlord_pass_expires_at > NOW()))::boolean AS challenger_has_warlord_pass,
+        (o.warlord_pass_status = 'active' AND (o.warlord_pass_expires_at IS NULL OR o.warlord_pass_expires_at > NOW()))::boolean AS opponent_has_warlord_pass
+       FROM battles b
+       LEFT JOIN users c ON c.id = b.challenger_id
+       LEFT JOIN users o ON o.id = b.opponent_id
+       WHERE b.id = $1 AND (b.challenger_id = $2 OR b.opponent_id = $2)`,
       [req.params.id, req.user.id]
     );
     if (!battle) return res.status(404).json({ error: 'Battle not found' });
@@ -427,6 +592,41 @@ router.get('/:id', verifyToken, async (req, res, next) => {
       challengerAssignedDetails: parseHabits(battle.challenger_assigned_habits),
       opponentAssignedDetails:   parseHabits(battle.opponent_assigned_habits),
     });
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/battles/:id/cancel — challenger cancels a pending invite (free, no token)
+router.delete('/:id/cancel', verifyToken, async (req, res, next) => {
+  try {
+    const { rows: [battle] } = await query(
+      'SELECT * FROM battles WHERE id = $1 AND challenger_id = $2',
+      [req.params.id, req.user.id]
+    );
+    if (!battle) return res.status(404).json({ error: 'Battle not found or you are not the challenger' });
+    if (battle.status !== 'pending') return res.status(409).json({ error: 'Can only cancel pending battles' });
+
+    await query('DELETE FROM battle_habit_logs WHERE battle_id = $1', [battle.id]);
+    await query('DELETE FROM battle_proofs WHERE battle_id = $1', [battle.id]);
+    await query('DELETE FROM battles WHERE id = $1', [battle.id]);
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+// ── Admin: delete battle by ID ──────────────────────────────────────────────
+router.delete('/admin/:id', async (req, res, next) => {
+  if (req.headers['x-cron-secret'] !== process.env.CRON_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const battleId = Number(req.params.id);
+  if (!Number.isInteger(battleId) || battleId <= 0) {
+    return res.status(400).json({ error: 'Invalid battle ID' });
+  }
+  try {
+    await query('DELETE FROM battle_habit_logs WHERE battle_id = $1', [battleId]);
+    await query('DELETE FROM battle_proofs WHERE battle_id = $1', [battleId]);
+    const { rowCount } = await query('DELETE FROM battles WHERE id = $1', [battleId]);
+    if (rowCount === 0) return res.status(404).json({ error: 'Battle not found' });
+    res.json({ ok: true, deleted: battleId });
   } catch (err) { next(err); }
 });
 

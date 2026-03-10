@@ -28,7 +28,19 @@
       "Bash(npm run build 2>&1 | tail -20)",
       "Bash(cd /Users/isaacstallan/gamify-life/src/backend && npm install web-push 2>&1 | tail -5)",
       "Bash(cd /Users/isaacstallan/gamify-life/src/frontend && npm run build 2>&1)",
-      "Bash(npm run build 2>&1 | tail -15)"
+      "Bash(npm run build 2>&1 | tail -15)",
+      "Bash(git commit -m \"$\\(cat <<'EOF'\nfix: resolve CORS blocking on vivify.au\n\n- Move CORS before helmet so headers are set before security middleware runs\n- Add app.options\\('*', cors\\(\\)\\) to handle preflight OPTIONS requests before\n  rate limiting can reject them with no CORS headers\n- Set crossOriginResourcePolicy: cross-origin in helmet — the same-origin\n  default was stripping Access-Control-Allow-Origin from API responses\n- Extract corsOptions to a shared object used by both the options handler\n  and the main cors\\(\\) middleware\n\nCo-Authored-By: claude-flow <ruv@ruv.net>\nEOF\n\\)\")",
+      "Bash(git push origin main 2>&1)",
+      "Bash(gh run list --limit 5 2>/dev/null || echo \"no gh actions\"; curl -s --max-time 8 https://levelup-production-6090.up.railway.app/api/health 2>&1 || echo \"health check failed\")",
+      "Bash(curl -sv --max-time 10 https://levelup-production-6090.up.railway.app/api/health 2>&1 | grep -E \"< HTTP|< |error|connect|TLS|SSL|refused|timeout\" | head -30)",
+      "Bash(curl -s --max-time 15 -X OPTIONS \\\\\n  -H \"Origin: https://vivify.au\" \\\\\n  -H \"Access-Control-Request-Method: GET\" \\\\\n  -H \"Access-Control-Request-Headers: Authorization\" \\\\\n  -w \"\\\\nHTTP_CODE:%{http_code}\" \\\\\n  https://levelup-production-6090.up.railway.app/api/habits 2>&1)",
+      "Bash(npm install -g @railway/cli 2>&1 | tail -3)",
+      "Bash(railway status 2>&1)",
+      "Bash(wait; echo \"curl done\")",
+      "Bash(curl -s --max-time 15 -w \"\\\\nHTTP:%{http_code}\" https://levelup-production-6090.up.railway.app/api/health && echo \"\"\n\ncurl -si --max-time 15 -X OPTIONS \\\\\n  -H \"Origin: https://vivify.au\" \\\\\n  -H \"Access-Control-Request-Method: GET\" \\\\\n  -H \"Access-Control-Request-Headers: Authorization\" \\\\\n  https://levelup-production-6090.up.railway.app/api/habits 2>&1 | head -30)",
+      "Bash(curl -s --max-time 90 -w \"\\\\nHTTP:%{http_code}\" https://levelup-production-6090.up.railway.app/api/health 2>&1)",
+      "Bash(echo \"Waiting 3 minutes for Railway to deploy...\" && sleep 180 && \\\\\ncurl -s --max-time 20 -w \"\\\\nHTTP:%{http_code}\" https://levelup-production-6090.up.railway.app/api/health && echo \"\" && \\\\\ncurl -si --max-time 15 -X OPTIONS \\\\\n  -H \"Origin: https://vivify.au\" \\\\\n  -H \"Access-Control-Request-Method: GET\" \\\\\n  -H \"Access-Control-Request-Headers: Authorization\" \\\\\n  https://levelup-production-6090.up.railway.app/api/habits | grep -E \"^HTTP|access-control|vary|content-type\")",
+      "Bash(cd /Users/isaacstallan/gamify-life/src/backend && node --check src/index.js 2>&1 && echo \"index.js: OK\"\nnode --check src/routes/push.js 2>&1 && echo \"push.js: OK\"\nnode --check src/routes/cron.js 2>&1 && echo \"cron.js: OK\"\nnode --check src/db.js 2>&1 && echo \"db.js: OK\"\nnode --check src/emailService.js 2>&1 && echo \"emailService.js: OK\")"
     ]
   },
   "enableAllProjectMcpServers": true,

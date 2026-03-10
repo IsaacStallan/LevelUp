@@ -55,7 +55,7 @@ function NegStatusBadge({ battle, userId }) {
   return <span className="px-2 py-0.5 rounded-full text-xs bg-yellow-900/40 border border-yellow-700/50 text-yellow-300">⏳ Awaiting</span>;
 }
 
-function BattleCard({ battle, userId, isShadow }) {
+function BattleCard({ battle, userId, isShadow, onCancel }) {
   const isChallenger = battle.challenger_id === userId;
   const myScore    = isChallenger ? battle.challenger_score : battle.opponent_score;
   const theirScore = isChallenger ? battle.opponent_score   : battle.challenger_score;
@@ -82,6 +82,18 @@ function BattleCard({ battle, userId, isShadow }) {
     ? 'border-amber-600/70 shadow-[0_0_18px_rgba(251,191,36,0.18)]'
     : 'border-white/[0.08]';
 
+  const [cancelling, setCancelling] = useState(false);
+  async function handleCancel(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm(isShadow ? 'Withdraw this duel challenge?' : 'Cancel this battle invitation?')) return;
+    setCancelling(true);
+    try {
+      await client.delete(`/battles/${battle.id}/cancel`);
+      onCancel?.();
+    } catch { setCancelling(false); }
+  }
+
   return (
     <Link to={`/battles/${battle.id}`} className="block">
       <div
@@ -107,7 +119,18 @@ function BattleCard({ battle, userId, isShadow }) {
           <p className="text-xs text-gray-500 text-center">⚠️ Counter sent — awaiting their response</p>
         )}
         {isAwaiting && (
-          <p className="text-xs text-gray-500 text-center">⏳ Awaiting opponent to accept the gauntlet</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-gray-500">⏳ Awaiting opponent to accept the gauntlet</p>
+            {isChallenger && (
+              <button
+                onClick={handleCancel}
+                disabled={cancelling}
+                className="text-[10px] text-red-500/70 hover:text-red-400 border border-red-900/40 hover:border-red-800/60 px-2 py-0.5 rounded-md transition-all disabled:opacity-40 shrink-0"
+              >
+                {cancelling ? '…' : isShadow ? 'Withdraw' : 'Cancel'}
+              </button>
+            )}
+          </div>
         )}
 
         {/* VS scoreboard (only for active/completed) */}
@@ -424,7 +447,7 @@ export default function BattlesPage() {
 
   return (
     <div className="min-h-screen">
-      <NavHeader level={level} />
+      <NavHeader />
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
 
         <div className="flex items-center justify-between">
@@ -466,7 +489,7 @@ export default function BattlesPage() {
             {sortedPending.length > 0 && (
               <section className="space-y-3">
                 <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Negotiations</h2>
-                {sortedPending.map(b => <BattleCard key={b.id} battle={b} userId={user?.id} isShadow={isShadow} />)}
+                {sortedPending.map(b => <BattleCard key={b.id} battle={b} userId={user?.id} isShadow={isShadow} onCancel={fetchBattles} />)}
               </section>
             )}
             {past.length > 0 && (

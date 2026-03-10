@@ -15,24 +15,26 @@ router.get('/', async (req, res, next) => {
       since.setDate(since.getDate() - 7);
       const sinceStr = since.toISOString().slice(0, 10);
       ({ rows } = await query(`
-        SELECT u.id, u.username, u.equipped_title,
+        SELECT u.id, u.username, u.equipped_title, u.duel_wins,
+               u.warlord_pass_status, u.warlord_pass_expires_at,
                COALESCE(SUM(hl.xp_earned), 0)::int as xp_total,
                COUNT(hl.id)::int as completions
         FROM users u
         LEFT JOIN habit_logs hl ON hl.user_id = u.id AND hl.completed_date >= $1
         GROUP BY u.id
-        ORDER BY xp_total DESC, completions DESC
+        ORDER BY u.duel_wins DESC, xp_total DESC
         LIMIT 50
       `, [sinceStr]));
     } else {
       ({ rows } = await query(`
-        SELECT u.id, u.username, u.equipped_title,
+        SELECT u.id, u.username, u.equipped_title, u.duel_wins,
+               u.warlord_pass_status, u.warlord_pass_expires_at,
                COALESCE(SUM(hl.xp_earned), 0)::int as xp_total,
                COUNT(hl.id)::int as completions
         FROM users u
         LEFT JOIN habit_logs hl ON hl.user_id = u.id
         GROUP BY u.id
-        ORDER BY xp_total DESC, completions DESC
+        ORDER BY u.duel_wins DESC, xp_total DESC
         LIMIT 50
       `));
     }
@@ -43,9 +45,12 @@ router.get('/', async (req, res, next) => {
       username: row.username,
       equipped_title: row.equipped_title || '',
       xp_total: Number(row.xp_total),
+      duel_wins: Number(row.duel_wins),
       level: Math.min(Math.floor(Number(row.xp_total) / 100), 100),
       completions: Number(row.completions),
       isCurrentUser: row.id === req.user.id,
+      hasWarlordPass: row.warlord_pass_status === 'active' &&
+        (!row.warlord_pass_expires_at || new Date(row.warlord_pass_expires_at) > new Date()),
     }));
 
     res.json(data);

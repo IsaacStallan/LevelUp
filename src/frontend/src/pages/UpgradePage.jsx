@@ -20,7 +20,7 @@ export default function UpgradePage() {
   const { mode, entitlements } = useMode();
   const isShadow = mode === 'SHADOW';
   const navigate = useNavigate();
-  const { warlordPass, warlordPassExpires, shadowTrialDaysLeft, freezeTokens, forfeitTokens } = entitlements;
+  const { hasWarlordPass, hasWarlordPassExpires, shadowTrialDaysLeft, freezeTokens, forfeitTokens, duelExtensions } = entitlements;
 
   // Re-fetch entitlements when user returns to this tab after checkout
   useEffect(() => {
@@ -31,13 +31,13 @@ export default function UpgradePage() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [refreshEntitlements]);
 
-  const expiryLabel = warlordPassExpires
-    ? new Date(warlordPassExpires).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+  const expiryLabel = hasWarlordPassExpires
+    ? new Date(hasWarlordPassExpires).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
     : null;
 
   return (
     <div className="page-enter min-h-screen">
-      <NavHeader level={Math.min(Math.floor((user?.xp_total ?? 0) / 100), 100)} />
+      <NavHeader />
 
       <main className="max-w-lg mx-auto px-4 py-6 space-y-6">
 
@@ -103,13 +103,13 @@ export default function UpgradePage() {
               ))}
             </ul>
 
-            {shadowTrialDaysLeft > 0 && !warlordPass && (
+            {shadowTrialDaysLeft > 0 && !hasWarlordPass && (
               <p className="text-xs text-amber-400 text-center">
                 ⏱ Shadow trial: {shadowTrialDaysLeft} day{shadowTrialDaysLeft !== 1 ? 's' : ''} remaining
               </p>
             )}
 
-            {warlordPass ? (
+            {hasWarlordPass ? (
               <div className="w-full bg-green-900/30 border border-green-700/40 text-green-400 py-2.5 rounded-xl text-sm font-semibold text-center space-y-0.5">
                 <p>✓ Warlord Pass Active</p>
                 {expiryLabel && (
@@ -179,6 +179,11 @@ export default function UpgradePage() {
               You have <span className="text-white font-bold">{forfeitTokens}</span> forfeit token{forfeitTokens !== 1 ? 's' : ''}.
             </p>
           )}
+          {duelExtensions > 0 && (
+            <p className="text-xs text-gray-600">
+              You have <span className="text-white font-bold">{duelExtensions}</span> duel extension{duelExtensions !== 1 ? 's' : ''}.
+            </p>
+          )}
           <div className="space-y-2">
             {[
               {
@@ -191,7 +196,7 @@ export default function UpgradePage() {
               {
                 icon: '⏳',
                 label: 'Duel Extension',
-                desc: 'Extend an active battle by 7 days',
+                desc: 'Extend an active battle by 3 days',
                 price: '$1.99',
                 url: LS_DUEL_EXTEND,
               },

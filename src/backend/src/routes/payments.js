@@ -109,6 +109,9 @@ router.post('/webhook', async (req, res) => {
         } else if (resolvedProductType === 'battle_forfeit') {
           const r = await query('UPDATE users SET battle_forfeit_tokens = battle_forfeit_tokens + 1 WHERE id = $1 RETURNING battle_forfeit_tokens', [user.id]);
           console.log('[webhook] battle_forfeit applied — new forfeit_tokens:', r.rows[0]?.battle_forfeit_tokens);
+        } else if (resolvedProductType === 'duel_extension') {
+          const r = await query('UPDATE users SET duel_extensions = duel_extensions + 1 WHERE id = $1 RETURNING duel_extensions', [user.id]);
+          console.log('[webhook] duel_extension applied — new duel_extensions:', r.rows[0]?.duel_extensions);
         } else {
           console.log('[webhook] order_created — no entitlement action for product_type:', resolvedProductType);
         }

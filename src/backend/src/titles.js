@@ -1,16 +1,21 @@
 export const TITLES = [
-  { id: 'first_step',     name: 'First Step',      desc: 'Complete your first habit'    },
-  { id: 'habit_seed',     name: 'Habit Seed',       desc: 'Reach a 7-day streak'         },
-  { id: 'fortnight',      name: 'Fortnight Force',  desc: 'Reach a 14-day streak'        },
-  { id: 'monthly_master', name: 'Monthly Master',   desc: 'Reach a 30-day streak'        },
-  { id: 'habit_machine',  name: 'Habit Machine',    desc: 'Complete 50 habits total'     },
-  { id: 'century_club',   name: 'Century Club',     desc: 'Complete 100 habits total'    },
-  { id: 'xp_apprentice',  name: 'XP Apprentice',    desc: 'Earn 100 XP'                  },
-  { id: 'xp_knight',      name: 'XP Knight',        desc: 'Earn 500 XP'                  },
-  { id: 'xp_legend',      name: 'XP Legend',        desc: 'Earn 1000 XP'                 },
-  { id: 'rising_star',    name: 'Rising Star',      desc: 'Reach level 5'                },
-  { id: 'the_grind',      name: 'The Grind',        desc: 'Reach level 25'               },
-  { id: 'legendary',      name: 'Legendary',        desc: 'Reach level 50'               },
+  { id: 'first_step',     name: 'First Step',       desc: 'Complete your first habit'              },
+  { id: 'habit_seed',     name: 'Habit Seed',        desc: 'Reach a 7-day streak'                   },
+  { id: 'fortnight',      name: 'Fortnight Force',   desc: 'Reach a 14-day streak'                  },
+  { id: 'monthly_master', name: 'Monthly Master',    desc: 'Reach a 30-day streak'                  },
+  { id: 'habit_machine',  name: 'Habit Machine',     desc: 'Complete 50 habits total'               },
+  { id: 'century_club',   name: 'Century Club',      desc: 'Complete 100 habits total'              },
+  { id: 'xp_apprentice',  name: 'XP Apprentice',     desc: 'Earn 100 XP'                            },
+  { id: 'xp_knight',      name: 'XP Knight',         desc: 'Earn 500 XP'                            },
+  { id: 'xp_legend',      name: 'XP Legend',         desc: 'Earn 1000 XP'                           },
+  { id: 'rising_star',    name: 'Rising Star',       desc: 'Reach level 5'                          },
+  { id: 'the_grind',      name: 'The Grind',         desc: 'Reach level 25'                         },
+  { id: 'legendary',      name: 'Legendary',         desc: 'Reach level 50'                         },
+  // Shadow-exclusive titles — unlocked only by Warlord Pass holders
+  { id: 'the_unseen',     name: '👁️ The Unseen',     desc: 'Shadow exclusive — default Warlord title', shadow: true },
+  { id: 'warlord',        name: '⚔️ Warlord',         desc: 'Shadow exclusive — for the conqueror',    shadow: true },
+  { id: 'eternal_flame',  name: '🔥 Eternal Flame',  desc: 'Shadow exclusive — the undying fire',     shadow: true },
+  { id: 'the_relentless', name: '💀 The Relentless', desc: 'Shadow exclusive — never stops',          shadow: true },
 ];
 
 export function checkUnlocks(stats, existingUnlocked) {

@@ -19,21 +19,38 @@ import BattleAcceptPage from './pages/BattleAcceptPage.jsx';
 import BattleDetailPage from './pages/BattleDetailPage.jsx';
 import InstallPrompt from './components/InstallPrompt.jsx';
 
+function FullScreenLoader() {
+  return (
+    <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#05020f', zIndex: 9999 }}>
+      <span className="text-5xl animate-pulse select-none">🔥</span>
+    </div>
+  );
+}
+
 function PrivateRoute({ children }) {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  const { isAuthenticated, authLoading } = useAuth();
+  if (authLoading) return <FullScreenLoader />;
+  return isAuthenticated ? children : <Navigate to="/" replace />;
 }
 
 // Redirect authenticated users away from login/register only
 function PublicOnlyRoute({ children }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, authLoading } = useAuth();
+  if (authLoading) return <FullScreenLoader />;
   return isAuthenticated ? <Navigate to="/dashboard" replace /> : children;
+}
+
+function RootRoute() {
+  const { isAuthenticated, authLoading } = useAuth();
+  if (authLoading) return <FullScreenLoader />;
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  return <LandingPage />;
 }
 
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/"          element={<LandingPage />} />
+      <Route path="/"          element={<RootRoute />} />
       <Route path="/login"     element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
       <Route path="/register"  element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
       <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />

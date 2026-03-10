@@ -78,8 +78,9 @@ function MoreDropdown({ isShadow }) {
   );
 }
 
-export default function NavHeader({ level }) {
-  const { user, logout } = useAuth();
+export default function NavHeader() {
+  const { user, logout, userStats } = useAuth();
+  const level = userStats.level;
   const { mode, entitlements } = useMode();
   const isShadow = mode === 'SHADOW';
   const navigate = useNavigate();
@@ -119,7 +120,7 @@ export default function NavHeader({ level }) {
     return () => { document.body.style.overflow = ''; };
   }, [menuOpen]);
 
-  const showTrialExpiredBanner = entitlements.trialStarted && !entitlements.shadowAccess && !entitlements.warlordPass && !isShadow;
+  const showTrialExpiredBanner = entitlements.trialStarted && !entitlements.shadowAccess && !entitlements.hasWarlordPass && !isShadow;
 
   return (
     <header className="sticky top-0 z-50">
@@ -140,7 +141,7 @@ export default function NavHeader({ level }) {
             <span className="level-badge text-xs bg-purple-900/50 border border-purple-700/60 text-purple-300 px-2 py-0.5 rounded-full tabular-nums">
               Lv.{level}
             </span>
-            {entitlements.shadowTrialDaysLeft > 0 && !entitlements.warlordPass && (
+            {entitlements.shadowTrialDaysLeft > 0 && !entitlements.hasWarlordPass && (
               <span className="hidden sm:inline text-[10px] text-amber-400/70 border border-amber-500/20 px-1.5 py-0.5 rounded-md">
                 Shadow Trial · {entitlements.shadowTrialDaysLeft}d
               </span>
@@ -160,7 +161,7 @@ export default function NavHeader({ level }) {
             </Link>
             <MoreDropdown isShadow={isShadow} />
             <ModeToggle />
-            {entitlements.warlordPass ? (
+            {entitlements.hasWarlordPass ? (
               <Link to="/upgrade" className="text-xs font-bold px-2 py-0.5 rounded-md bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/30 transition-colors">
                 WARLORD
               </Link>
@@ -242,7 +243,7 @@ export default function NavHeader({ level }) {
                 <ModeText id={item.id} />
               </Link>
             ))}
-            {entitlements.warlordPass ? (
+            {entitlements.hasWarlordPass ? (
               <Link
                 to="/upgrade"
                 onClick={close}

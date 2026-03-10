@@ -135,6 +135,9 @@ export async function initDb() {
   await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS warlord_pass_expires_at TIMESTAMPTZ`);
   await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS shadow_mode_trial_started_at TIMESTAMPTZ`);
   await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS battle_forfeit_tokens INTEGER NOT NULL DEFAULT 0`);
+  await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS duel_extensions INTEGER NOT NULL DEFAULT 0`);
+  await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS duel_wins INTEGER NOT NULL DEFAULT 0`);
+  await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS victory_bonus_pending INTEGER NOT NULL DEFAULT 0`);
 
   // ── Battle habit logs (custom per-battle habits) ─────────────────────────────
   await query(`

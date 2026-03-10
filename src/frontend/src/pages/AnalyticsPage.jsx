@@ -206,7 +206,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="page-enter min-h-screen">
-      <NavHeader level={user?.level ?? 0} />
+      <NavHeader />
 
       <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4">
         <h1 className="text-lg sm:text-xl font-bold text-white"><ModeText id="analytics.title" /></h1>
