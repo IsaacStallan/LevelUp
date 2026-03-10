@@ -5,6 +5,7 @@ import NavHeader from '../components/NavHeader.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import ModeText from '../components/ModeText.jsx';
 import PlayerName from '../components/PlayerName.jsx';
+import Avatar from '../components/Avatar.jsx';
 
 const MEDALS = { 1: '🥇', 2: '🥈', 3: '🥉' };
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -82,6 +83,9 @@ export default function LeaderboardPage() {
                     <span className="text-sm font-bold text-gray-500 tabular-nums">#{entry.rank}</span>
                   )}
                 </div>
+
+                {/* Avatar */}
+                <Avatar username={entry.username} size={32} hasWarlordPass={entry.hasWarlordPass} />
 
                 {/* Name + title */}
                 <div className="flex-1 min-w-0">

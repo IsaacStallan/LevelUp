@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import { useMode } from '../contexts/ModeContext.jsx';
 import client from '../api/client.js';
 import PlayerName from '../components/PlayerName.jsx';
+import Avatar from '../components/Avatar.jsx';
 
 const CATEGORIES = [
   { value: 'general',    label: 'General',     icon: '⚡' },
@@ -140,7 +141,10 @@ function BattleCard({ battle, userId, isShadow, onCancel }) {
         {battle.status !== 'pending' && (
           <div className="flex items-center gap-3">
             <div className="flex-1 text-center">
-              <p className="text-xs text-gray-500 truncate mb-1">
+              <div className="flex justify-center mb-1">
+                <Avatar username={myName} size={28} hasWarlordPass={myHasWarlordPass} />
+              </div>
+              <p className="text-xs text-gray-500 truncate">
                 <PlayerName name={myName} hasWarlordPass={myHasWarlordPass} />
                 {' '}{battle.winner_id === userId && battle.status === 'completed' ? '👑' : '(you)'}
               </p>
@@ -148,7 +152,10 @@ function BattleCard({ battle, userId, isShadow, onCancel }) {
             </div>
             <span className={`text-sm font-black tracking-widest ${isShadow ? 'text-red-600' : 'text-gray-600'}`}>VS</span>
             <div className="flex-1 text-center">
-              <p className="text-xs text-gray-500 truncate mb-1">
+              <div className="flex justify-center mb-1">
+                <Avatar username={theirName || '?'} size={28} hasWarlordPass={theirHasWarlordPass} />
+              </div>
+              <p className="text-xs text-gray-500 truncate">
                 <PlayerName name={theirName || '?'} hasWarlordPass={theirHasWarlordPass} />
                 {battle.winner_id === (isChallenger ? battle.opponent_id : battle.challenger_id) && battle.status === 'completed' ? ' 👑' : ''}
               </p>

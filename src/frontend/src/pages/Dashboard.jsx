@@ -8,6 +8,7 @@ import StageUpOverlay from '../components/StageUpOverlay.jsx';
 import NavHeader from '../components/NavHeader.jsx';
 import DailyChallenge from '../components/DailyChallenge.jsx';
 import PlayerName from '../components/PlayerName.jsx';
+import Avatar from '../components/Avatar.jsx';
 
 function getCharacter(level) {
   if (level >= 90) return { emoji: '⚡', title: 'Immortal' };
@@ -27,9 +28,9 @@ function IdentityBar({ character, username, level, streak, xpTotal, rank, equipp
   return (
     <div className="space-y-2 py-3 px-1">
       <div className="flex items-center justify-between gap-3">
-        {/* Left: character + name + level */}
+        {/* Left: avatar + name + level */}
         <div className="flex items-center gap-2.5 min-w-0">
-          {isShadow && <span className="text-3xl leading-none select-none">{character.emoji}</span>}
+          <Avatar username={username} size={36} hasWarlordPass={hasWarlordPass} />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <PlayerName
@@ -41,8 +42,10 @@ function IdentityBar({ character, username, level, streak, xpTotal, rank, equipp
                 Lv.{level}
               </span>
             </div>
-            {isShadow && equippedTitle && (
-              <p className="text-[10px] text-yellow-400 leading-tight truncate mt-0.5">{equippedTitle}</p>
+            {equippedTitle && (
+              <p className={`text-[10px] leading-tight truncate mt-0.5 ${isShadow ? 'text-yellow-400' : 'text-gray-500'}`}>
+                {equippedTitle}
+              </p>
             )}
           </div>
         </div>
