@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import { useMode } from '../contexts/ModeContext.jsx';
 import ModeToggle from './ModeToggle.jsx';
 import ModeText from './ModeText.jsx';
+import client from '../api/client.js';
 
 function HamburgerIcon() {
   return (
@@ -23,12 +24,13 @@ function CloseIcon() {
 }
 
 const MORE_ITEMS = [
+  { to: '/friends',     icon: '⚔️', id: 'nav.friends'    },
   { to: '/analytics',   icon: '📊', id: 'nav.analytics'  },
   { to: '/titles',      icon: '🏅', id: 'nav.titles'     },
   { to: '/leaderboard', icon: '🏆', id: 'nav.leaderboard' },
 ];
 
-function MoreDropdown({ isShadow }) {
+function MoreDropdown({ isShadow, pendingRequests }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -45,11 +47,14 @@ function MoreDropdown({ isShadow }) {
     <div ref={ref} className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
       <button
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors text-sm select-none"
+        className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors text-sm select-none relative"
         aria-expanded={open}
         aria-haspopup="true"
       >
         <ModeText id="nav.more" />
+        {pendingRequests > 0 && (
+          <span className="absolute -top-1 -right-2 w-2 h-2 bg-red-500 rounded-full" />
+        )}
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"
           style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 150ms' }}>
           <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -86,6 +91,19 @@ export default function NavHeader() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    function poll() {
+      client.get('/friends/requests').then(r => {
+        if (!cancelled) setPendingRequests(r.data.length);
+      }).catch(() => {});
+    }
+    poll();
+    const id = setInterval(poll, 60_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
 
   useEffect(() => {
     let rafId = null;
@@ -159,7 +177,7 @@ export default function NavHeader() {
             <Link to="/battles" className="text-gray-400 hover:text-white transition-colors">
               <ModeText id="nav.battles" />
             </Link>
-            <MoreDropdown isShadow={isShadow} />
+            <MoreDropdown isShadow={isShadow} pendingRequests={pendingRequests} />
             <ModeToggle />
             {entitlements.hasWarlordPass ? (
               <Link to="/upgrade" className="text-xs font-bold px-2 py-0.5 rounded-md bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/30 transition-colors">
@@ -229,6 +247,7 @@ export default function NavHeader() {
               { to: '/habits',      icon: '📋', id: 'nav.habits'      },
               { to: '/leaderboard', icon: '🏆', id: 'nav.leaderboard' },
               { to: '/battles',     icon: '⚔️', id: 'nav.battles'     },
+              { to: '/friends',     icon: '🤝', id: 'nav.friends',     badge: pendingRequests },
               { to: '/analytics',   icon: '📊', id: 'nav.analytics'   },
               { to: '/titles',      icon: '🏅', id: 'nav.titles'      },
             ].map(item => (
@@ -241,6 +260,11 @@ export default function NavHeader() {
               >
                 <span style={{ fontSize: '20px', width: '28px', textAlign: 'center' }}>{item.icon}</span>
                 <ModeText id={item.id} />
+                {item.badge > 0 && (
+                  <span className="ml-auto bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full tabular-nums">
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             ))}
             {entitlements.hasWarlordPass ? (

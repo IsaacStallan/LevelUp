@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import NavHeader from '../components/NavHeader.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useMode } from '../contexts/ModeContext.jsx';
@@ -196,7 +196,7 @@ function BattleCard({ battle, userId, isShadow, onCancel }) {
 }
 
 /* ── CreateBattleModal — 2 steps: category+duration → write habits ────── */
-function CreateBattleModal({ onClose, onCreated, isShadow }) {
+function CreateBattleModal({ onClose, onCreated, isShadow, prefillOpponent = null }) {
   const [step, setStep] = useState(1);
   const [category, setCategory] = useState('general');
   const [duration, setDuration] = useState(30);
@@ -228,11 +228,13 @@ function CreateBattleModal({ onClose, onCreated, isShadow }) {
     setLoading(true);
     setError('');
     try {
-      const { data } = await client.post('/battles/create', {
+      const payload = {
         habit_category: category,
         duration_days: duration,
         challenger_assigned_habits: validHabits,
-      });
+      };
+      if (prefillOpponent?.id) payload.opponent_id = prefillOpponent.id;
+      const { data } = await client.post('/battles/create', payload);
       setResult(data);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to create battle');
@@ -265,6 +267,11 @@ function CreateBattleModal({ onClose, onCreated, isShadow }) {
               <h2 className={`text-xl font-bold ${isShadow ? 'text-red-400' : 'text-white'}`}>
                 {isShadow ? '⚔️ Issue a Duel' : '⚔️ Create a Battle'}
               </h2>
+              {prefillOpponent?.username && (
+                <p className="text-sm text-gray-400 mt-1">
+                  Challenging <span className="text-white font-semibold">{prefillOpponent.username}</span>
+                </p>
+              )}
               <p className="text-[10px] text-gray-600 uppercase tracking-widest mt-1">Step 1 of 2</p>
             </div>
 
@@ -391,13 +398,28 @@ function CreateBattleModal({ onClose, onCreated, isShadow }) {
             <h2 className={`text-xl font-bold ${isShadow ? 'text-red-400' : 'text-white'}`}>
               {isShadow ? '⚔️ Duel Issued!' : '⚔️ Challenge Created!'}
             </h2>
-            <p className="text-sm text-gray-400">
-              {isShadow ? "Their sentence is written. They have 48 hours to accept and write yours back." : 'Share this link. Your opponent has 48 hours to respond.'}
-            </p>
-            <div className={`rounded-xl p-3 border text-xs break-all font-mono text-gray-300 ${isShadow ? 'bg-red-950/30 border-red-800/40' : 'bg-purple-950/30 border-purple-800/40'}`}>
-              {result.invite_link}
-            </div>
-            <div className="text-xs text-gray-500 italic leading-relaxed">"{shareText}"</div>
+            {result.direct_challenge ? (
+              <>
+                <p className="text-sm text-gray-400">
+                  {prefillOpponent?.username
+                    ? <><span className="text-white font-semibold">{prefillOpponent.username}</span> has been challenged directly. They have 48 hours to accept and write your habits.</>
+                    : 'Direct challenge sent. Your opponent has 48 hours to respond.'}
+                </p>
+                <div className={`rounded-xl p-3 border text-xs break-all font-mono text-gray-300 ${isShadow ? 'bg-red-950/30 border-red-800/40' : 'bg-purple-950/30 border-purple-800/40'}`}>
+                  {result.invite_link}
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-gray-400">
+                  {isShadow ? "Their sentence is written. They have 48 hours to accept and write yours back." : 'Share this link. Your opponent has 48 hours to respond.'}
+                </p>
+                <div className={`rounded-xl p-3 border text-xs break-all font-mono text-gray-300 ${isShadow ? 'bg-red-950/30 border-red-800/40' : 'bg-purple-950/30 border-purple-800/40'}`}>
+                  {result.invite_link}
+                </div>
+                <div className="text-xs text-gray-500 italic leading-relaxed">"{shareText}"</div>
+              </>
+            )}
             <div className="flex gap-3">
               <button onClick={copyLink}
                 className={`flex-1 py-2.5 rounded-xl font-semibold text-sm transition-all ${
@@ -422,11 +444,25 @@ export default function BattlesPage() {
   const { mode } = useMode();
   const isShadow = mode === 'SHADOW';
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [battles, setBattles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [prefillOpponent, setPrefillOpponent] = useState(null);
   const [xpTotal, setXpTotal] = useState(0);
+
+  // Open create modal pre-filled if navigated from Friends page
+  useEffect(() => {
+    const oppId = searchParams.get('opponent_id');
+    const oppName = searchParams.get('opponent_username');
+    if (oppId) {
+      setPrefillOpponent({ id: Number(oppId), username: oppName || '' });
+      setShowCreate(true);
+      // Clean the URL without triggering a re-render loop
+      navigate('/battles', { replace: true });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchBattles = useCallback(async () => {
     try {
@@ -515,9 +551,10 @@ export default function BattlesPage() {
 
       {showCreate && (
         <CreateBattleModal
-          onClose={() => setShowCreate(false)}
+          onClose={() => { setShowCreate(false); setPrefillOpponent(null); }}
           onCreated={fetchBattles}
           isShadow={isShadow}
+          prefillOpponent={prefillOpponent}
         />
       )}
     </div>

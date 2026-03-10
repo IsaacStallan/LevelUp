@@ -111,7 +111,13 @@ async function completeBattle(battle) {
 // POST /api/battles/create — authenticated
 router.post('/create', verifyToken, async (req, res, next) => {
   try {
-    const { habit_category = 'general', duration_days = 30, challenger_assigned_habits = [] } = req.body;
+    const {
+      habit_category = 'general',
+      duration_days = 30,
+      challenger_assigned_habits = [],
+      opponent_id = null,
+    } = req.body;
+
     if (!VALID_CATEGORIES.includes(habit_category))
       return res.status(400).json({ error: 'Invalid category' });
     if (!VALID_DURATIONS.includes(Number(duration_days)))
@@ -124,17 +130,31 @@ router.post('/create', verifyToken, async (req, res, next) => {
     const { rows: [user] } = await query('SELECT username FROM users WHERE id = $1', [req.user.id]);
     const negotiation_deadline = new Date(Date.now() + 48 * 60 * 60 * 1000);
 
+    const isDirect = Boolean(opponent_id && opponent_id !== req.user.id);
+    let opponentUsername = null;
+    if (isDirect) {
+      const { rows: [opp] } = await query('SELECT username FROM users WHERE id = $1', [opponent_id]);
+      if (!opp) return res.status(404).json({ error: 'Opponent not found' });
+      opponentUsername = opp.username;
+    }
+
     const { rows: [battle] } = await query(
       `INSERT INTO battles
-         (challenger_id, challenger_username, habit_category, duration_days,
-          invite_token, challenger_assigned_habits, negotiation_deadline)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [req.user.id, user.username, habit_category, Number(duration_days),
-       invite_token, JSON.stringify(sanitized), negotiation_deadline]
+         (challenger_id, challenger_username, opponent_id, opponent_username,
+          habit_category, duration_days, invite_token,
+          challenger_assigned_habits, negotiation_deadline,
+          direct_challenge, opponent_notified)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10) RETURNING *`,
+      [req.user.id, user.username,
+       isDirect ? opponent_id : null,
+       opponentUsername,
+       habit_category, Number(duration_days),
+       invite_token, JSON.stringify(sanitized), negotiation_deadline,
+       isDirect]
     );
 
     const invite_link = `https://vivify.au/battle/accept?token=${invite_token}`;
-    res.status(201).json({ battle, invite_link });
+    res.status(201).json({ battle, invite_link, direct_challenge: isDirect });
   } catch (err) { next(err); }
 });
 

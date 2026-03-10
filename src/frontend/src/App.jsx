@@ -17,6 +17,7 @@ import TermsPage from './pages/TermsPage.jsx';
 import BattlesPage from './pages/BattlesPage.jsx';
 import BattleAcceptPage from './pages/BattleAcceptPage.jsx';
 import BattleDetailPage from './pages/BattleDetailPage.jsx';
+import FriendsPage from './pages/FriendsPage.jsx';
 import InstallPrompt from './components/InstallPrompt.jsx';
 
 function FullScreenLoader() {
@@ -61,6 +62,7 @@ function AppRoutes() {
       <Route path="/titles"      element={<PrivateRoute><TitlesPage /></PrivateRoute>} />
       <Route path="/battles"        element={<PrivateRoute><BattlesPage /></PrivateRoute>} />
       <Route path="/battles/:id"   element={<PrivateRoute><BattleDetailPage /></PrivateRoute>} />
+      <Route path="/friends"       element={<PrivateRoute><FriendsPage /></PrivateRoute>} />
       <Route path="/battle/accept" element={<BattleAcceptPage />} />
       <Route path="/privacy"     element={<PrivacyPage />} />
       <Route path="/terms"       element={<TermsPage />} />

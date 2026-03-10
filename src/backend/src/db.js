@@ -174,6 +174,22 @@ export async function initDb() {
     )
   `);
 
+  // ── Friendships ──────────────────────────────────────────────────────────────
+  await query(`
+    CREATE TABLE IF NOT EXISTS friendships (
+      id SERIAL PRIMARY KEY,
+      requester_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      addressee_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      status VARCHAR(20) DEFAULT 'pending',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(requester_id, addressee_id)
+    )
+  `);
+
+  // ── Direct challenge columns on battles ──────────────────────────────────
+  await query(`ALTER TABLE battles ADD COLUMN IF NOT EXISTS direct_challenge BOOLEAN NOT NULL DEFAULT FALSE`);
+  await query(`ALTER TABLE battles ADD COLUMN IF NOT EXISTS opponent_notified BOOLEAN NOT NULL DEFAULT FALSE`);
+
   // ── Purchases log ─────────────────────────────────────────────────────────────
   await query(`
     CREATE TABLE IF NOT EXISTS purchases (
