@@ -4,6 +4,7 @@ import client from '../api/client.js';
 import NavHeader from '../components/NavHeader.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import ModeText from '../components/ModeText.jsx';
+import PlayerName from '../components/PlayerName.jsx';
 
 const MEDALS = { 1: '🥇', 2: '🥈', 3: '🥉' };
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -85,13 +86,12 @@ export default function LeaderboardPage() {
                 {/* Name + title */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    {entry.hasWarlordPass && (
-                      <span className="flame-flair shrink-0" style={{ fontSize: '13px' }}>🔥</span>
-                    )}
-                    <span className={`text-sm font-semibold truncate ${entry.isCurrentUser ? 'text-purple-300' : 'text-white'}`}>
-                      {entry.username}
-                      {entry.isCurrentUser && <span className="text-xs text-purple-500 ml-1">(you)</span>}
-                    </span>
+                    <PlayerName
+                      name={entry.username}
+                      hasWarlordPass={entry.hasWarlordPass}
+                      className={`text-sm font-semibold truncate ${entry.isCurrentUser ? 'text-purple-300' : 'text-white'}`}
+                    />
+                    {entry.isCurrentUser && <span className="text-xs text-purple-500">(you)</span>}
                     {entry.equipped_title && (
                       <span className="text-[10px] bg-yellow-900/30 border border-yellow-700/40 text-yellow-400 px-1.5 py-0.5 rounded-full shrink-0">
                         {entry.equipped_title}

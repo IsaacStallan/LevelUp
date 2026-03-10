@@ -7,6 +7,7 @@ import LevelUpOverlay from '../components/LevelUpOverlay.jsx';
 import StageUpOverlay from '../components/StageUpOverlay.jsx';
 import NavHeader from '../components/NavHeader.jsx';
 import DailyChallenge from '../components/DailyChallenge.jsx';
+import PlayerName from '../components/PlayerName.jsx';
 
 function getCharacter(level) {
   if (level >= 90) return { emoji: '⚡', title: 'Immortal' };
@@ -22,7 +23,7 @@ function getCharacter(level) {
 }
 
 /* ─── Identity Bar ─────────────────────────────────────────────────── */
-function IdentityBar({ character, username, level, streak, xpTotal, rank, equippedTitle, isShadow, freezeTokens, onUseFreeze, freezing }) {
+function IdentityBar({ character, username, level, streak, xpTotal, rank, equippedTitle, isShadow, freezeTokens, onUseFreeze, freezing, hasWarlordPass }) {
   return (
     <div className="space-y-2 py-3 px-1">
       <div className="flex items-center justify-between gap-3">
@@ -31,10 +32,17 @@ function IdentityBar({ character, username, level, streak, xpTotal, rank, equipp
           {isShadow && <span className="text-3xl leading-none select-none">{character.emoji}</span>}
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-sm font-bold text-white truncate max-w-[96px]">{username}</span>
+              <PlayerName
+                name={username}
+                hasWarlordPass={hasWarlordPass}
+                className="text-sm font-bold truncate max-w-[96px]"
+              />
               <span className="text-[10px] bg-purple-900/50 border border-purple-700/50 text-purple-300 px-1.5 py-0.5 rounded-full tabular-nums shrink-0">
                 Lv.{level}
               </span>
+              {hasWarlordPass && (
+                <span title="Warlord Pass Active" className="shrink-0 leading-none cursor-default">👑</span>
+              )}
             </div>
             {isShadow && equippedTitle && (
               <p className="text-[10px] text-yellow-400 leading-tight truncate mt-0.5">{equippedTitle}</p>
@@ -563,22 +571,14 @@ function StandingSection({ rank, onChallengeComplete, isShadow }) {
 
 /* ─── Main page ─────────────────────────────────────────────────────── */
 export default function Dashboard() {
-  const { user, updateUser, userStats, refreshStats } = useAuth();
-  const { mode } = useMode();
+  const { user, updateUser, userStats, refreshStats, entitlements } = useAuth();
+  const { mode, theme: shadowTheme, setTheme: handleSetTheme } = useMode();
   const isShadow = mode === 'SHADOW';
   const navigate = useNavigate();
 
   const [habits, setHabits] = useState([]);
   const [battles, setBattles] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [shadowTheme, setShadowTheme] = useState(() =>
-    localStorage.getItem('vivify_shadow_theme') || 'crimson'
-  );
-
-  function handleSetTheme(t) {
-    setShadowTheme(t);
-    localStorage.setItem('vivify_shadow_theme', t);
-  }
   const [xpFlash, setXpFlash] = useState(false);
   const [levelUp, setLevelUp] = useState(null);
   const [stageUp, setStageUp] = useState(null);
@@ -752,6 +752,7 @@ export default function Dashboard() {
               freezeTokens={userStats.freezeTokens}
               onUseFreeze={handleUseFreeze}
               freezing={freezing}
+              hasWarlordPass={entitlements.hasWarlordPass}
             />
 
             {/* 2. Active Battles — hero section */}

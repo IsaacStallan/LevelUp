@@ -4,6 +4,8 @@ import { useAuth } from './AuthContext.jsx';
 
 const ModeContext = createContext(null);
 
+const THEME_IDS = ['crimson', 'void', 'eclipse', 'inferno'];
+
 function ShadowUpgradeModal({ onClose }) {
   return (
     <div
@@ -38,26 +40,57 @@ function ShadowUpgradeModal({ onClose }) {
   );
 }
 
+function applyThemeClass(theme) {
+  document.body.classList.remove(...THEME_IDS.map(id => `theme-${id}`));
+  if (theme !== 'crimson') {
+    document.body.classList.add(`theme-${theme}`);
+  }
+}
+
 export function ModeProvider({ children }) {
-  // ModeProvider must be inside AuthProvider — it reads entitlements from AuthContext
   const { entitlements, refreshEntitlements } = useAuth();
 
   const [mode, setMode] = useState(() => {
     try { return localStorage.getItem('vivify_mode') || 'LIGHT'; } catch { return 'LIGHT'; }
   });
+  const [theme, setThemeRaw] = useState(() => {
+    try { return localStorage.getItem('vivify_shadow_theme') || 'crimson'; } catch { return 'crimson'; }
+  });
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
+  // Apply shadow-mode class
   useEffect(() => {
     document.body.classList.toggle('shadow-mode', mode === 'SHADOW');
     try { localStorage.setItem('vivify_mode', mode); } catch {}
   }, [mode]);
 
+  // Apply theme class (only meaningful in SHADOW mode)
+  useEffect(() => {
+    if (mode === 'SHADOW') {
+      applyThemeClass(theme);
+    } else {
+      document.body.classList.remove(...THEME_IDS.map(id => `theme-${id}`));
+    }
+  }, [mode, theme]);
+
+  // Reset to crimson if pass is lost
+  useEffect(() => {
+    if (!entitlements.hasWarlordPass && theme !== 'crimson') {
+      setThemeRaw('crimson');
+      try { localStorage.setItem('vivify_shadow_theme', 'crimson'); } catch {}
+    }
+  }, [entitlements.hasWarlordPass]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const setTheme = useCallback((id) => {
+    if (id !== 'crimson' && !entitlements.hasWarlordPass) return;
+    setThemeRaw(id);
+    try { localStorage.setItem('vivify_shadow_theme', id); } catch {}
+  }, [entitlements.hasWarlordPass]);
+
   const switchMode = useCallback(async (next) => {
-    // Pass holders always have shadow access — skip trial check
     if (next === 'SHADOW' && !entitlements.hasShadowAccess) {
       try {
         const { data } = await client.post('/auth/start-shadow-trial');
-        // Refresh to pick up updated trial state
         refreshEntitlements();
         if (data.daysLeft > 0 || data.started) {
           setMode('SHADOW');
@@ -72,10 +105,10 @@ export function ModeProvider({ children }) {
     }
     setMode(next);
     client.patch('/auth/mode', { mode: next }).catch(() => {});
-  }, [entitlements.shadowAccess, refreshEntitlements]);
+  }, [entitlements.hasShadowAccess, refreshEntitlements]);
 
   return (
-    <ModeContext.Provider value={{ mode, switchMode, entitlements, refreshEntitlements }}>
+    <ModeContext.Provider value={{ mode, switchMode, theme, setTheme, entitlements, refreshEntitlements }}>
       {children}
       {showUpgradeModal && <ShadowUpgradeModal onClose={() => setShowUpgradeModal(false)} />}
     </ModeContext.Provider>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import NavHeader from '../components/NavHeader.jsx';
+import PlayerName from '../components/PlayerName.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useMode } from '../contexts/ModeContext.jsx';
 import client from '../api/client.js';
@@ -180,8 +181,10 @@ export default function BattleDetailPage() {
             </div>
             <p className="text-sm text-gray-500 flex items-center gap-1">
               vs{' '}
-              {theirHasWarlordPass && <span className="flame-flair" style={{ fontSize: '12px' }}>🔥</span>}
-              {isChallenger ? battle.opponent_username ?? 'Awaiting opponent' : battle.challenger_username}
+              <PlayerName
+                name={isChallenger ? (battle.opponent_username ?? 'Awaiting opponent') : battle.challenger_username}
+                hasWarlordPass={theirHasWarlordPass}
+              />
             </p>
           </div>
           <button onClick={copyShareLink}
@@ -218,7 +221,7 @@ export default function BattleDetailPage() {
             style={{ background: 'linear-gradient(135deg, rgba(20,10,40,0.8), rgba(10,10,30,0.9))' }}>
             <div className="flex items-end justify-between gap-4 mb-4">
               <div className="text-center flex-1">
-                <p className="text-xs text-gray-500 mb-1">{myName} (you)</p>
+                <p className="text-xs text-gray-500 mb-1"><PlayerName name={myName} hasWarlordPass={myHasWarlordPass} /> (you)</p>
                 <p className={`text-5xl font-black tabular-nums ${isShadow ? 'text-red-400' : 'text-purple-300'} ${myHasWarlordPass ? 'warlord-score-flicker' : ''}`}>
                   {myScore}<span className="text-2xl">%</span>
                 </p>
@@ -226,8 +229,7 @@ export default function BattleDetailPage() {
               <span className="text-lg text-gray-700 font-black pb-2">VS</span>
               <div className="text-center flex-1">
                 <p className="text-xs text-gray-500 mb-1 flex items-center justify-center gap-1">
-                  {theirHasWarlordPass && <span className="flame-flair" style={{ fontSize: '11px' }}>🔥</span>}
-                  {theirName ?? '?'}
+                  <PlayerName name={theirName ?? '?'} hasWarlordPass={theirHasWarlordPass} />
                 </p>
                 <p className="text-5xl font-black tabular-nums text-gray-400">
                   {theirScore}<span className="text-2xl">%</span>

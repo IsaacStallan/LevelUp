@@ -4,6 +4,7 @@ import NavHeader from '../components/NavHeader.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useMode } from '../contexts/ModeContext.jsx';
 import client from '../api/client.js';
+import PlayerName from '../components/PlayerName.jsx';
 
 const CATEGORIES = [
   { value: 'general',    label: 'General',     icon: '⚡' },
@@ -61,6 +62,8 @@ function BattleCard({ battle, userId, isShadow, onCancel }) {
   const theirScore = isChallenger ? battle.opponent_score   : battle.challenger_score;
   const myName     = isChallenger ? battle.challenger_username : battle.opponent_username;
   const theirName  = isChallenger ? battle.opponent_username   : battle.challenger_username;
+  const myHasWarlordPass    = Boolean(isChallenger ? battle.challenger_has_warlord_pass : battle.opponent_has_warlord_pass);
+  const theirHasWarlordPass = Boolean(isChallenger ? battle.opponent_has_warlord_pass  : battle.challenger_has_warlord_pass);
   const remaining  = daysRemaining(battle.ends_at);
   const elapsed    = daysElapsed(battle.starts_at, battle.duration_days);
   const progress   = Math.round((elapsed / battle.duration_days) * 100);
@@ -138,14 +141,15 @@ function BattleCard({ battle, userId, isShadow, onCancel }) {
           <div className="flex items-center gap-3">
             <div className="flex-1 text-center">
               <p className="text-xs text-gray-500 truncate mb-1">
-                {myName} {battle.winner_id === userId && battle.status === 'completed' ? '👑' : '(you)'}
+                <PlayerName name={myName} hasWarlordPass={myHasWarlordPass} />
+                {' '}{battle.winner_id === userId && battle.status === 'completed' ? '👑' : '(you)'}
               </p>
               <p className={`text-3xl font-bold tabular-nums ${isShadow ? 'text-red-400' : 'text-purple-300'}`}>{myScore}%</p>
             </div>
             <span className={`text-sm font-black tracking-widest ${isShadow ? 'text-red-600' : 'text-gray-600'}`}>VS</span>
             <div className="flex-1 text-center">
               <p className="text-xs text-gray-500 truncate mb-1">
-                {theirName || '?'}
+                <PlayerName name={theirName || '?'} hasWarlordPass={theirHasWarlordPass} />
                 {battle.winner_id === (isChallenger ? battle.opponent_id : battle.challenger_id) && battle.status === 'completed' ? ' 👑' : ''}
               </p>
               <p className="text-3xl font-bold tabular-nums text-gray-400">{theirScore}%</p>

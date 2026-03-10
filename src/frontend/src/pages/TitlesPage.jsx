@@ -3,6 +3,7 @@ import client from '../api/client.js';
 import NavHeader from '../components/NavHeader.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import ModeText from '../components/ModeText.jsx';
+import PlayerName from '../components/PlayerName.jsx';
 
 const TITLE_ICONS = {
   first_step:     '👣',
@@ -88,7 +89,7 @@ function TitleCard({ t, equipped, saving, onEquip, locked, lockReason }) {
 }
 
 export default function TitlesPage() {
-  const { refreshStats } = useAuth();
+  const { refreshStats, user } = useAuth();
   const [titles, setTitles]     = useState([]);
   const [equipped, setEquipped] = useState('');
   const [hasWarlordPass, setHasWarlordPass] = useState(false);
@@ -136,7 +137,10 @@ export default function TitlesPage() {
           <div>
             <h1 className="text-lg sm:text-xl font-bold text-white"><ModeText id="titles.page.title" /></h1>
             {!loading && (
-              <p className="text-xs text-gray-500 mt-0.5">{unlockedCount} / {regularTitles.length} earned</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                <PlayerName name={user?.username ?? ''} hasWarlordPass={hasWarlordPass} className="text-gray-400" />
+                {' '}· {unlockedCount} / {regularTitles.length} earned
+              </p>
             )}
           </div>
           {equipped && (

@@ -6,7 +6,7 @@ const SCENE_ID = 'bg-scene';
 
 // Deterministic star positions — avoids re-generation on HMR
 const STARS = Array.from({ length: 40 }, (_, i) => {
-  const t = (i * 0.618033988749895) % 1; // golden ratio spread
+  const t = (i * 0.618033988749895) % 1;
   const l = (i * 0.381966011250105) % 1;
   return {
     top:    `${(t * 96 + 1).toFixed(2)}%`,
@@ -18,59 +18,36 @@ const STARS = Array.from({ length: 40 }, (_, i) => {
   };
 });
 
-const LIGHT_ORBS = [
-  {
-    color:  'rgba(124, 58, 237, 0.75)',
-    width:  '800px', height: '800px',
-    top: '-250px', left: '-180px',
-    animationName: 'orb1', animationDuration: '22s', animationDelay: '0s',
-  },
-  {
-    color:  'rgba(109, 40, 217, 0.70)',
-    width:  '700px', height: '650px',
-    top: '-180px', right: '-180px',
-    animationName: 'orb2', animationDuration: '28s', animationDelay: '3s',
-  },
-  {
-    color:  'rgba(168, 85, 247, 0.60)',
-    width:  '600px', height: '600px',
-    top: '40%', left: '-200px',
-    animationName: 'orb3', animationDuration: '19s', animationDelay: '7s',
-  },
-  {
-    color:  'rgba(236, 72, 153, 0.40)',
-    width:  '500px', height: '500px',
-    bottom: '-130px', right: '-120px',
-    animationName: 'orb4', animationDuration: '34s', animationDelay: '12s',
-  },
+const ORB_BASE = [
+  { width: '800px', height: '800px', top: '-250px', left: '-180px',    dur: '22s', delay: '0s',  anim: 'orb1' },
+  { width: '700px', height: '650px', top: '-180px', right: '-180px',   dur: '28s', delay: '3s',  anim: 'orb2' },
+  { width: '600px', height: '600px', top: '40%',   left: '-200px',     dur: '19s', delay: '7s',  anim: 'orb3' },
+  { width: '500px', height: '500px', bottom: '-130px', right: '-120px', dur: '34s', delay: '12s', anim: 'orb4' },
 ];
 
-const SHADOW_ORBS = [
-  {
-    color:  'rgba(153, 27, 27, 0.80)',
-    width:  '800px', height: '800px',
-    top: '-250px', left: '-180px',
-    animationName: 'orb1', animationDuration: '14s', animationDelay: '0s',
-  },
-  {
-    color:  'rgba(127, 29, 29, 0.75)',
-    width:  '700px', height: '650px',
-    top: '-180px', right: '-180px',
-    animationName: 'orb2', animationDuration: '18s', animationDelay: '2s',
-  },
-  {
-    color:  'rgba(185, 28, 28, 0.65)',
-    width:  '600px', height: '600px',
-    top: '40%', left: '-200px',
-    animationName: 'orb3', animationDuration: '12s', animationDelay: '4s',
-  },
-  {
-    color:  'rgba(220, 38, 38, 0.45)',
-    width:  '500px', height: '500px',
-    bottom: '-130px', right: '-120px',
-    animationName: 'orb4', animationDuration: '22s', animationDelay: '7s',
-  },
-];
+const ORB_COLORS = {
+  light:   ['rgba(124,58,237,0.75)',   'rgba(109,40,217,0.70)',  'rgba(168,85,247,0.60)',  'rgba(236,72,153,0.40)'],
+  crimson: ['rgba(153,27,27,0.80)',    'rgba(127,29,29,0.75)',   'rgba(185,28,28,0.65)',   'rgba(220,38,38,0.45)'],
+  void:    ['rgba(0,90,180,0.60)',     'rgba(0,70,160,0.55)',    'rgba(0,130,220,0.50)',   'rgba(0,170,255,0.35)'],
+  eclipse: ['rgba(90,20,180,0.65)',    'rgba(70,15,160,0.60)',   'rgba(130,55,200,0.55)',  'rgba(155,89,182,0.40)'],
+  inferno: ['rgba(170,55,0,0.72)',     'rgba(150,45,0,0.65)',    'rgba(195,75,0,0.58)',    'rgba(245,95,0,0.42)'],
+};
+
+const ORB_ANIM_DURATIONS = {
+  light:   ['22s','28s','19s','34s'],
+  crimson: ['14s','18s','12s','22s'],
+  void:    ['16s','20s','14s','26s'],
+  eclipse: ['18s','22s','15s','28s'],
+  inferno: ['13s','17s','11s','20s'],
+};
+
+const STAR_COLORS = {
+  light:   'white',
+  crimson: 'rgba(255,180,180,0.75)',
+  void:    'rgba(180,220,255,0.80)',
+  eclipse: 'rgba(220,180,255,0.80)',
+  inferno: 'rgba(255,190,120,0.80)',
+};
 
 const CSS = `
   #${SCENE_ID} {
@@ -87,7 +64,7 @@ const CSS = `
     filter: blur(90px);
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
-    transition: background 1.2s ease;
+    transition: background 1.4s ease;
   }
   #${SCENE_ID} .star {
     position: absolute;
@@ -96,7 +73,7 @@ const CSS = `
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
     animation-name: star-twinkle;
-    transition: background 0.8s ease;
+    transition: background 1s ease;
   }
   #bg-vignette {
     position: fixed;
@@ -143,24 +120,22 @@ function inject() {
     const scene = document.createElement('div');
     scene.id = SCENE_ID;
 
-    // Orbs — start with light config; updateOrbs() will fix on mode change
-    LIGHT_ORBS.forEach(o => {
+    ORB_BASE.forEach((o, i) => {
       const div = document.createElement('div');
       div.className = 'orb';
       div.style.width  = o.width;
       div.style.height = o.height;
-      div.style.background = `radial-gradient(circle, ${o.color} 0%, transparent 70%)`;
+      div.style.background = `radial-gradient(circle, ${ORB_COLORS.light[i]} 0%, transparent 70%)`;
       if (o.top)    div.style.top    = o.top;
       if (o.left)   div.style.left   = o.left;
       if (o.right)  div.style.right  = o.right;
       if (o.bottom) div.style.bottom = o.bottom;
-      div.style.animationName     = o.animationName;
-      div.style.animationDuration = o.animationDuration;
-      div.style.animationDelay    = o.animationDelay;
+      div.style.animationName     = o.anim;
+      div.style.animationDuration = ORB_ANIM_DURATIONS.light[i];
+      div.style.animationDelay    = o.delay;
       scene.appendChild(div);
     });
 
-    // Stars
     STARS.forEach(s => {
       const div = document.createElement('div');
       div.className = 'star';
@@ -177,7 +152,6 @@ function inject() {
     document.body.insertBefore(scene, document.body.firstChild);
   }
 
-  // Vignette — separate fixed div at z-index 1
   if (!document.getElementById('bg-vignette')) {
     const vignette = document.createElement('div');
     vignette.id = 'bg-vignette';
@@ -185,24 +159,27 @@ function inject() {
   }
 }
 
-function updateOrbs(mode) {
+function updateOrbs(mode, theme) {
   const scene = document.getElementById(SCENE_ID);
   if (!scene) return;
-  const configs = mode === 'SHADOW' ? SHADOW_ORBS : LIGHT_ORBS;
+
+  const key = mode !== 'SHADOW' ? 'light' : (theme || 'crimson');
+  const colors = ORB_COLORS[key] || ORB_COLORS.crimson;
+  const durations = ORB_ANIM_DURATIONS[key] || ORB_ANIM_DURATIONS.crimson;
+  const starColor = STAR_COLORS[key] || STAR_COLORS.crimson;
+
   scene.querySelectorAll('.orb').forEach((orb, i) => {
-    if (!configs[i]) return;
-    orb.style.background        = `radial-gradient(circle, ${configs[i].color} 0%, transparent 70%)`;
-    orb.style.animationDuration = configs[i].animationDuration;
-    orb.style.animationDelay    = configs[i].animationDelay;
+    if (!colors[i]) return;
+    orb.style.background        = `radial-gradient(circle, ${colors[i]} 0%, transparent 70%)`;
+    orb.style.animationDuration = durations[i];
   });
-  const starColor = mode === 'SHADOW' ? 'rgba(255, 180, 180, 0.75)' : 'white';
   scene.querySelectorAll('.star').forEach(star => {
     star.style.background = starColor;
   });
 }
 
 function BackgroundScene() {
-  const { mode } = useMode();
+  const { mode, theme } = useMode();
 
   useEffect(() => {
     inject();
@@ -214,8 +191,8 @@ function BackgroundScene() {
   }, []);
 
   useEffect(() => {
-    updateOrbs(mode);
-  }, [mode]);
+    updateOrbs(mode, theme);
+  }, [mode, theme]);
 
   return null;
 }
