@@ -1,20 +1,15 @@
 /**
- * PlayerName — renders a username with optional Warlord Pass flame flair.
+ * PlayerName — renders a username with optional Warlord Pass typographic flair.
  *
  * Props:
- *   name          {string}  — username to display
- *   hasWarlordPass {bool}   — show 🔥 + crimson glow when true
- *   className     {string}  — extra classes applied to the name span
+ *   name           {string} — username to display
+ *   hasWarlordPass {bool}   — apply Cinzel shimmer styling when true
+ *   className      {string} — extra classes applied to the span
  */
 export default function PlayerName({ name, hasWarlordPass, className = '' }) {
   if (!hasWarlordPass) {
     return <span className={className}>{name}</span>;
   }
 
-  return (
-    <span className="inline-flex items-center gap-1">
-      <span className="flame-flair" style={{ fontSize: '0.9em', lineHeight: 1 }}>🔥</span>
-      <span className={`warlord-name ${className}`}>{name}</span>
-    </span>
-  );
+  return <span className={`warlord-name ${className}`}>{name}</span>;
 }

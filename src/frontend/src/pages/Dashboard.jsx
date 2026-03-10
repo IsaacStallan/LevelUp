@@ -40,9 +40,6 @@ function IdentityBar({ character, username, level, streak, xpTotal, rank, equipp
               <span className="text-[10px] bg-purple-900/50 border border-purple-700/50 text-purple-300 px-1.5 py-0.5 rounded-full tabular-nums shrink-0">
                 Lv.{level}
               </span>
-              {hasWarlordPass && (
-                <span title="Warlord Pass Active" className="shrink-0 leading-none cursor-default">👑</span>
-              )}
             </div>
             {isShadow && equippedTitle && (
               <p className="text-[10px] text-yellow-400 leading-tight truncate mt-0.5">{equippedTitle}</p>

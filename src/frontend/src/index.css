@@ -668,29 +668,31 @@ body.shadow-mode::after {
 }
 
 /* ─── Warlord Pass: flame flicker ────────────────────────────────── */
-@keyframes flameFlicker {
-  0%, 100% {
-    filter: drop-shadow(0 0 4px #ff4400);
-    transform: scale(1);
-  }
-  25% {
-    filter: drop-shadow(0 0 8px #ff6600);
-    transform: scale(1.1) rotate(-5deg);
-  }
-  75% {
-    filter: drop-shadow(0 0 6px #ff2200);
-    transform: scale(0.95) rotate(3deg);
-  }
-}
-.flame-flair {
-  display: inline-block;
-  animation: flameFlicker 1.2s ease-in-out infinite;
+/* ─── Warlord Pass: typographic shimmer ──────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: 0% center; }
+  100% { background-position: 200% center; }
 }
 .warlord-name {
-  text-shadow: 0 0 12px rgba(220, 50, 50, 0.6);
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #ff4444 0%, #ff8c00 50%, #ff4444 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 3s linear infinite;
+  filter: drop-shadow(0 0 8px rgba(255, 60, 0, 0.4));
 }
 .warlord-score-flicker {
-  animation: flameFlicker 1.5s ease-in-out infinite;
+  background: linear-gradient(135deg, #ff4444 0%, #ff8c00 50%, #ff4444 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 3s linear infinite;
 }
 
 /* ─── Warlord opponent battle card border ────────────────────────── */
