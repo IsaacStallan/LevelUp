@@ -45,16 +45,16 @@ export function AuthProvider({ children }) {
       client.get('/gamification/stats'),
       client.get('/leaderboard').catch(() => ({ data: [] })),
     ]).then(([statsRes, lbRes]) => {
-      const s = statsRes.data;
+      const s = statsRes.data || {};
       const rank = lbRes.data.find(e => e.isCurrentUser)?.rank ?? null;
       setUserStats({
-        level: s.level,
-        xp: s.xp_total,
-        streak: s.current_streak,
-        freezeTokens: s.freeze_tokens,
+        level: s.level ?? 0,
+        xp: s.xp_total ?? 0,
+        streak: s.current_streak ?? 0,
+        freezeTokens: s.freeze_tokens ?? 0,
         rank,
         title: s.equipped_title || null,
-        pendingVictoryBonus: s.pending_victory_bonus || 0,
+        pendingVictoryBonus: s.pending_victory_bonus ?? 0,
       });
     }).catch(() => {});
   }, []);

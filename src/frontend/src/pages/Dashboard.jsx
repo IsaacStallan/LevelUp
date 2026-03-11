@@ -68,7 +68,7 @@ function IdentityBar({ character, username, level, streak, xpTotal, rank, equipp
 
         {/* Right: XP + rank */}
         <div className="text-right shrink-0">
-          <p className="text-sm font-bold text-yellow-300 tabular-nums">⚡{xpTotal.toLocaleString()}</p>
+          <p className="text-sm font-bold text-yellow-300 tabular-nums">⚡{(xpTotal ?? 0).toLocaleString()}</p>
           {rank && <p className="text-[10px] text-gray-500 mt-0.5">#{rank} globally</p>}
         </div>
       </div>
