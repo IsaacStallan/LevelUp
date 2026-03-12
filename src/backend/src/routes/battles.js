@@ -90,12 +90,18 @@ async function recalculateScore(battle, userId) {
   const myHabits = parseHabits(isChallenger ? battle.opponent_assigned_habits : battle.challenger_assigned_habits);
   const totalHabits = myHabits.length;
 
-  const startRef = battle.sudden_death && battle.sudden_death_started_at
+  // Use explicit getTime() to guarantee numeric milliseconds — avoids any string coercion
+  const startMs = (battle.sudden_death && battle.sudden_death_started_at
     ? new Date(battle.sudden_death_started_at)
-    : new Date(battle.starts_at);
+    : new Date(battle.starts_at)).getTime();
   const maxDays = battle.sudden_death ? 1 : battle.duration_days;
-  const elapsed = Math.max(1, Math.ceil((new Date() - startRef) / (1000 * 60 * 60 * 24)));
-  const elapsedDays = Math.min(elapsed, maxDays);
+
+  // Compute elapsed as AEST calendar-day difference so the loop covers all Sydney dates
+  // Example: starts_at=2026-03-11T07:47Z (AEST 18:47), today AEST=2026-03-12 → 2 days elapsed
+  const startAESTStr = toAESTDate(startMs);
+  const todayAESTStr = toAESTDate(Date.now());
+  const aestDaysDiff = Math.round((new Date(todayAESTStr) - new Date(startAESTStr)) / (1000 * 60 * 60 * 24));
+  const elapsedDays = Math.min(Math.max(1, aestDaysDiff + 1), maxDays);
 
   // Count distinct verified habits per day
   // (final_verified IS NOT FALSE = includes null=pending and true=verified, excludes false=rejected)
@@ -116,22 +122,22 @@ async function recalculateScore(battle, userId) {
   // Build a map of AEST date string → completed_count
   const countByDay = {};
   for (const row of dailyCounts) {
-    // completed_date is already stored as AEST date string (from todayStr()), normalise to YYYY-MM-DD
     countByDay[row.day.slice(0, 10)] = parseInt(row.completed_count, 10);
   }
 
   // For each elapsed AEST calendar day, compute daily % (0 if no submissions that day)
   let dailyPctSum = 0;
-  for (let d = 0; d < elapsedDays; d++) {
-    const dayStr = toAESTDate(startRef.getTime() + d * 24 * 60 * 60 * 1000);
-    const completed = countByDay[dayStr] ?? 0;
+  for (let i = 0; i < elapsedDays; i++) {
+    const dayKey = toAESTDate(new Date(startMs + i * 86400000));
+    const completed = countByDay[dayKey] || 0;
+    console.log('[loop] i=%d dayKey=%s completed=%d', i, dayKey, completed);
     dailyPctSum += totalHabits > 0 ? (completed / totalHabits) * 100 : 0;
   }
 
   const score = elapsedDays > 0 ? Math.round(dailyPctSum / elapsedDays) : 0;
   const scoreField = isChallenger ? 'challenger_score' : 'opponent_score';
-  console.log('[recalculateScore] battleId=%d userId=%d isChallenger=%s suddenDeath=%s startRef=%s elapsedDays=%d totalHabits=%d countByDay=%j score=%d',
-    battle.id, userId, isChallenger, battle.sudden_death, startRef.toISOString(), elapsedDays,
+  console.log('[recalculateScore] battleId=%d userId=%d isChallenger=%s suddenDeath=%s startAEST=%s todayAEST=%s elapsedDays=%d totalHabits=%d countByDay=%j score=%d',
+    battle.id, userId, isChallenger, battle.sudden_death, startAESTStr, todayAESTStr, elapsedDays,
     totalHabits, countByDay, score);
   await query(`UPDATE battles SET ${scoreField} = $1 WHERE id = $2`, [score, battle.id]);
   return score;
