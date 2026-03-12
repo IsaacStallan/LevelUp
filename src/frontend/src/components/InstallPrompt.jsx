@@ -18,7 +18,12 @@ function isIOS() {
   return /iPhone|iPad|iPod/i.test(navigator.userAgent) && !('MSStream' in window);
 }
 function isStandalone() {
-  return window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+  if (typeof window === 'undefined') return false;
+  if (window.navigator.standalone === true) return true;
+  if (typeof window.matchMedia === 'function') {
+    return window.matchMedia('(display-mode: standalone)').matches;
+  }
+  return false;
 }
 
 // ── Install Modal ─────────────────────────────────────────────────────────────
@@ -97,7 +102,7 @@ function PushModal({ isShadow, onDone }) {
   const [status, setStatus] = useState('idle'); // idle | requesting | done | error
 
   async function handleEnable() {
-    if (!VAPID_KEY) { onDone(); return; }
+    if (!VAPID_KEY || typeof Notification === 'undefined') { onDone(); return; }
     setStatus('requesting');
     try {
       const permission = await Notification.requestPermission();
@@ -176,11 +181,12 @@ export default function InstallPrompt() {
     window.addEventListener('beforeinstallprompt', onBeforeInstall);
 
     // Determine what to show
-    const installDismissed      = localStorage.getItem(LS_INSTALL);
-    const pushDismissed         = localStorage.getItem(LS_PUSH);
+    let installDismissed, pushDismissed;
+    try { installDismissed = localStorage.getItem(LS_INSTALL); } catch {}
+    try { pushDismissed    = localStorage.getItem(LS_PUSH);    } catch {}
     const alreadyInstalled      = isStandalone();
     const pushSupported         = 'PushManager' in window && 'serviceWorker' in navigator && VAPID_KEY;
-    const notificationGranted   = Notification?.permission === 'granted';
+    const notificationGranted   = typeof Notification !== 'undefined' && Notification.permission === 'granted';
     const ios                   = isIOS();
 
     // Nothing left to show
@@ -201,18 +207,19 @@ export default function InstallPrompt() {
   }, [isAuthenticated]);
 
   function handleInstallDone() {
-    localStorage.setItem(LS_INSTALL, '1');
+    try { localStorage.setItem(LS_INSTALL, '1'); } catch {}
     setPhase(null);
-    const pushDismissed       = localStorage.getItem(LS_PUSH);
+    let pushDismissed;
+    try { pushDismissed = localStorage.getItem(LS_PUSH); } catch {}
     const pushSupported       = 'PushManager' in window && 'serviceWorker' in navigator && VAPID_KEY;
-    const notificationGranted = Notification?.permission === 'granted';
+    const notificationGranted = typeof Notification !== 'undefined' && Notification.permission === 'granted';
     if (!pushDismissed && pushSupported && !notificationGranted) {
       setTimeout(() => setPhase('push'), 5000);
     }
   }
 
   function handlePushDone() {
-    localStorage.setItem(LS_PUSH, '1');
+    try { localStorage.setItem(LS_PUSH, '1'); } catch {}
     setPhase(null);
   }
 

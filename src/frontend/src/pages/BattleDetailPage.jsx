@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import NavHeader from '../components/NavHeader.jsx';
 import PlayerName from '../components/PlayerName.jsx';
+import ProofSheet from '../components/ProofSheet.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useMode } from '../contexts/ModeContext.jsx';
 import client from '../api/client.js';
@@ -26,7 +27,7 @@ export default function BattleDetailPage() {
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
   const [copied, setCopied]     = useState(false);
-  const [completing, setCompleting] = useState(null); // habit_name in flight
+  const [sheet, setSheet] = useState(null); // { battleId, habitName }
   const [acting, setActing]     = useState(false);
   const [verifying, setVerifying] = useState(null); // proof_id being actioned
   const [showForfeitModal, setShowForfeitModal] = useState(false);
@@ -52,17 +53,9 @@ export default function BattleDetailPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  async function handleCompleteHabit(habitName) {
-    setCompleting(habitName);
-    setError('');
-    try {
-      await client.post(`/battles/${id}/complete-habit`, { habit_name: habitName });
-      await loadData();
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to log habit');
-    } finally {
-      setCompleting(null);
-    }
+  async function closeSheet() {
+    setSheet(null);
+    await loadData();
   }
 
   async function handleVerifyProof(proofId, verified) {
@@ -334,32 +327,36 @@ export default function BattleDetailPage() {
                 <p className="text-sm text-gray-600 italic text-center py-3">No habits assigned</p>
               ) : myProgress.habits.map(h => {
                 const done = h.completedDates.includes(today);
-                const isLoading = completing === h.name;
                 return (
                   <button
                     key={h.name}
-                    onClick={() => !done && handleCompleteHabit(h.name)}
-                    disabled={done || !!completing}
+                    onClick={() => !done && setSheet({ battleId: id, habitName: h.name })}
+                    disabled={done}
                     className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl border transition-all text-left ${
                       done
                         ? isShadow
                           ? 'border-red-800/50 bg-red-950/20 cursor-default'
                           : 'border-green-800/50 bg-green-950/20 cursor-default'
                         : 'border-white/10 hover:border-white/20 active:scale-[0.99]'
-                    } ${!!completing && !done ? 'opacity-50' : ''}`}
+                    }`}
                   >
                     <span className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 text-xs ${
                       done
                         ? isShadow ? 'border-red-500 bg-red-500/30 text-red-300' : 'border-green-500 bg-green-500/30 text-green-300'
                         : 'border-white/20'
                     }`}>
-                      {isLoading ? '…' : done ? '✓' : ''}
+                      {done ? '✓' : ''}
                     </span>
                     <span className="text-lg">{h.icon}</span>
                     <span className={`flex-1 text-sm ${done ? 'text-gray-500 line-through' : 'text-gray-200'}`}>
                       {h.name}
                     </span>
-                    {done && <span className="text-xs text-gray-600">Done</span>}
+                    {done
+                      ? <span className="text-xs text-gray-600">Done</span>
+                      : <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-lg ${isShadow ? 'text-red-300 bg-red-900/30 border border-red-700/40' : 'text-purple-300 bg-purple-900/30 border border-purple-700/40'}`}>
+                          {isShadow ? 'Evidence' : 'Proof'}
+                        </span>
+                    }
                   </button>
                 );
               })}
@@ -525,6 +522,8 @@ export default function BattleDetailPage() {
         {error && <p className="text-sm text-red-400 text-center">{error}</p>}
 
       </main>
+
+      {sheet && <ProofSheet sheet={sheet} isShadow={isShadow} onClose={closeSheet} />}
     </div>
   );
 }

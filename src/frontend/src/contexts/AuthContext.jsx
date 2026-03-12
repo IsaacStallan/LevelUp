@@ -26,21 +26,23 @@ export function AuthProvider({ children }) {
 
   const [entitlements, setEntitlements] = useState(DEFAULT_ENTITLEMENTS);
   // Start loading if a token exists — resolved after we verify it
-  const [authLoading, setAuthLoading] = useState(() => !!localStorage.getItem('levelup_token'));
+  const [authLoading, setAuthLoading] = useState(() => {
+    try { return !!localStorage.getItem('levelup_token'); } catch { return false; }
+  });
 
   const [userStats, setUserStats] = useState({
     level: 0, xp: 0, streak: 0, freezeTokens: 0, rank: null, title: null, pendingVictoryBonus: 0,
   });
 
   const fetchEntitlements = useCallback(() => {
-    if (!localStorage.getItem('levelup_token')) return;
+    try { if (!localStorage.getItem('levelup_token')) return; } catch { return; }
     client.get('/auth/entitlements')
       .then(r => setEntitlements(r.data))
       .catch(() => {});
   }, []);
 
   const refreshStats = useCallback(() => {
-    if (!localStorage.getItem('levelup_token')) return;
+    try { if (!localStorage.getItem('levelup_token')) return; } catch { return; }
     Promise.all([
       client.get('/gamification/stats'),
       client.get('/leaderboard').catch(() => ({ data: [] })),
@@ -61,7 +63,8 @@ export function AuthProvider({ children }) {
 
   // One-time mount: verify stored token with the backend
   useEffect(() => {
-    const token = localStorage.getItem('levelup_token');
+    let token;
+    try { token = localStorage.getItem('levelup_token'); } catch { setAuthLoading(false); return; }
     if (!token) {
       setAuthLoading(false);
       return;
@@ -74,8 +77,7 @@ export function AuthProvider({ children }) {
       })
       .catch(() => {
         // Token expired / invalid — clear everything
-        localStorage.removeItem('levelup_token');
-        localStorage.removeItem('levelup_user');
+        try { localStorage.removeItem('levelup_token'); localStorage.removeItem('levelup_user'); } catch {}
         setUser(null);
         setEntitlements(DEFAULT_ENTITLEMENTS);
         setAuthLoading(false);
@@ -92,16 +94,15 @@ export function AuthProvider({ children }) {
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const login = useCallback((token, userData) => {
-    localStorage.setItem('levelup_token', token);
-    localStorage.setItem('levelup_user', JSON.stringify(userData));
+    try { localStorage.setItem('levelup_token', token); } catch {}
+    try { localStorage.setItem('levelup_user', JSON.stringify(userData)); } catch {}
     setUser(userData);
     refreshStats();
     // entitlements fetched by the useEffect above
   }, [refreshStats]);
 
   const logout = useCallback(() => {
-    localStorage.removeItem('levelup_token');
-    localStorage.removeItem('levelup_user');
+    try { localStorage.removeItem('levelup_token'); localStorage.removeItem('levelup_user'); } catch {}
     setUser(null);
     setEntitlements(DEFAULT_ENTITLEMENTS);
   }, []);
@@ -109,7 +110,7 @@ export function AuthProvider({ children }) {
   const updateUser = useCallback((updates) => {
     setUser((prev) => {
       const updated = { ...prev, ...updates };
-      localStorage.setItem('levelup_user', JSON.stringify(updated));
+      try { localStorage.setItem('levelup_user', JSON.stringify(updated)); } catch {}
       return updated;
     });
   }, []);

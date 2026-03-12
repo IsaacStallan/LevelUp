@@ -7,9 +7,9 @@
  *   className      {string} — extra classes applied to the span
  */
 export default function PlayerName({ name, hasWarlordPass, className = '' }) {
+  if (!name) return <span className={className} />;
   if (!hasWarlordPass) {
     return <span className={className}>{name}</span>;
   }
-
   return <span className={`warlord-name ${className}`}>{name}</span>;
 }

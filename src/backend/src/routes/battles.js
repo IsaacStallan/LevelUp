@@ -352,33 +352,9 @@ router.get('/mine', verifyToken, async (req, res, next) => {
   }
 });
 
-// POST /api/battles/:id/complete-habit — log today's habit completion (no photo)
-router.post('/:id/complete-habit', verifyToken, async (req, res, next) => {
-  try {
-    const { habit_name } = req.body;
-    if (!habit_name) return res.status(400).json({ error: 'habit_name required' });
-
-    const { rows: [battle] } = await query(
-      'SELECT * FROM battles WHERE id = $1 AND (challenger_id = $2 OR opponent_id = $2)',
-      [req.params.id, req.user.id]
-    );
-    if (!battle) return res.status(404).json({ error: 'Battle not found' });
-    if (battle.status !== 'active') return res.status(400).json({ error: 'Battle is not active' });
-
-    const isChallenger = battle.challenger_id === req.user.id;
-    const myHabits = parseHabits(isChallenger ? battle.opponent_assigned_habits : battle.challenger_assigned_habits);
-    if (!myHabits.find(h => h.name === habit_name))
-      return res.status(400).json({ error: 'Habit not in your assigned list' });
-
-    const today = todayStr();
-    await query(
-      `INSERT INTO battle_habit_logs (battle_id, user_id, habit_name, completed_date)
-       VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
-      [battle.id, req.user.id, habit_name, today]
-    );
-    const score = await recalculateScore(battle, req.user.id);
-    res.json({ ok: true, score, completedToday: true });
-  } catch (err) { next(err); }
+// POST /api/battles/:id/complete-habit — disabled; photo proof required
+router.post('/:id/complete-habit', verifyToken, (req, res) => {
+  res.status(400).json({ error: 'Photo proof required. Use /submit-proof instead.' });
 });
 
 // POST /api/battles/:id/submit-proof — multipart photo upload + AI verification
