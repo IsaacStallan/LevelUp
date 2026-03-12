@@ -81,40 +81,52 @@ async function sendPush(userId, title, body, url) {
 async function recalculateScore(battle, userId) {
   const isChallenger = battle.challenger_id === userId;
   const myHabits = parseHabits(isChallenger ? battle.opponent_assigned_habits : battle.challenger_assigned_habits);
-  // During sudden death, only count proofs submitted after sudden_death_started_at
-  const proofParams = [battle.id, userId];
-  let dateFilter = '';
-  if (battle.sudden_death && battle.sudden_death_started_at) {
-    dateFilter = 'AND created_at > $3';
-    proofParams.push(battle.sudden_death_started_at);
-  }
-  // Query battle_proofs where final_verified IS NOT FALSE (includes null=pending, true=verified; excludes false=rejected)
-  const { rows: logs } = await query(
-    `SELECT DISTINCT habit_name, completed_date FROM battle_proofs
-     WHERE battle_id = $1 AND user_id = $2 AND (final_verified IS NOT FALSE) ${dateFilter}`,
-    proofParams
-  );
+  const totalHabits = myHabits.length;
+
   const startRef = battle.sudden_death && battle.sudden_death_started_at
     ? new Date(battle.sudden_death_started_at)
     : new Date(battle.starts_at);
   const maxDays = battle.sudden_death ? 1 : battle.duration_days;
   const elapsed = Math.max(1, Math.ceil((new Date() - startRef) / (1000 * 60 * 60 * 24)));
   const elapsedDays = Math.min(elapsed, maxDays);
-  const logsByDate = {};
-  for (const log of logs) {
-    if (!logsByDate[log.completed_date]) logsByDate[log.completed_date] = new Set();
-    logsByDate[log.completed_date].add(log.habit_name);
+
+  // Count distinct verified habits per day
+  // (final_verified IS NOT FALSE = includes null=pending and true=verified, excludes false=rejected)
+  const proofParams = [battle.id, userId];
+  let dateFilter = '';
+  if (battle.sudden_death && battle.sudden_death_started_at) {
+    dateFilter = 'AND created_at > $3';
+    proofParams.push(battle.sudden_death_started_at);
   }
-  const habitNames = new Set(myHabits.map(h => h.name));
-  let completedDays = 0;
-  for (const names of Object.values(logsByDate)) {
-    if ([...habitNames].every(n => names.has(n))) completedDays++;
+  const { rows: dailyCounts } = await query(
+    `SELECT completed_date::text AS day, COUNT(DISTINCT habit_name) AS completed_count
+     FROM battle_proofs
+     WHERE battle_id = $1 AND user_id = $2 AND (final_verified IS NOT FALSE) ${dateFilter}
+     GROUP BY completed_date`,
+    proofParams
+  );
+
+  // Build a map of day → completed_count
+  const countByDay = {};
+  for (const row of dailyCounts) {
+    countByDay[row.day] = Number(row.completed_count);
   }
-  const score = elapsedDays > 0 ? Math.round((completedDays / elapsedDays) * 100) : 0;
+
+  // For each elapsed calendar day, compute daily % (0 if no submissions that day)
+  let dailyPctSum = 0;
+  for (let d = 0; d < elapsedDays; d++) {
+    const day = new Date(startRef);
+    day.setUTCDate(day.getUTCDate() + d);
+    const dayStr = day.toISOString().slice(0, 10); // YYYY-MM-DD
+    const completed = countByDay[dayStr] ?? 0;
+    dailyPctSum += totalHabits > 0 ? (completed / totalHabits) * 100 : 0;
+  }
+
+  const score = elapsedDays > 0 ? Math.round(dailyPctSum / elapsedDays) : 0;
   const scoreField = isChallenger ? 'challenger_score' : 'opponent_score';
-  console.log('[recalculateScore] battleId=%d userId=%d isChallenger=%s suddenDeath=%s startRef=%s elapsed=%d elapsedDays=%d habits=%j proofRows=%d completedDays=%d score=%d',
-    battle.id, userId, isChallenger, battle.sudden_death, startRef.toISOString(), elapsed, elapsedDays,
-    myHabits.map(h => h.name), logs.length, completedDays, score);
+  console.log('[recalculateScore] battleId=%d userId=%d isChallenger=%s suddenDeath=%s startRef=%s elapsedDays=%d totalHabits=%d dailyCounts=%j score=%d',
+    battle.id, userId, isChallenger, battle.sudden_death, startRef.toISOString(), elapsedDays,
+    totalHabits, dailyCounts, score);
   await query(`UPDATE battles SET ${scoreField} = $1 WHERE id = $2`, [score, battle.id]);
   return score;
 }
