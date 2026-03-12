@@ -78,6 +78,13 @@ async function sendPush(userId, title, body, url) {
   } catch { /* non-fatal */ }
 }
 
+// Convert a UTC Date to an AEST (UTC+11) date string YYYY-MM-DD
+function toAESTDate(date) {
+  const d = new Date(date);
+  d.setTime(d.getTime() + 11 * 60 * 60 * 1000);
+  return d.toISOString().slice(0, 10);
+}
+
 async function recalculateScore(battle, userId) {
   const isChallenger = battle.challenger_id === userId;
   const myHabits = parseHabits(isChallenger ? battle.opponent_assigned_habits : battle.challenger_assigned_habits);
@@ -106,27 +113,26 @@ async function recalculateScore(battle, userId) {
     proofParams
   );
 
-  // Build a map of day → completed_count
+  // Build a map of AEST date string → completed_count
   const countByDay = {};
   for (const row of dailyCounts) {
-    countByDay[row.day] = Number(row.completed_count);
+    // completed_date is already stored as AEST date string (from todayStr()), normalise to YYYY-MM-DD
+    countByDay[row.day.slice(0, 10)] = parseInt(row.completed_count, 10);
   }
 
-  // For each elapsed calendar day, compute daily % (0 if no submissions that day)
+  // For each elapsed AEST calendar day, compute daily % (0 if no submissions that day)
   let dailyPctSum = 0;
   for (let d = 0; d < elapsedDays; d++) {
-    const day = new Date(startRef);
-    day.setUTCDate(day.getUTCDate() + d);
-    const dayStr = day.toISOString().slice(0, 10); // YYYY-MM-DD
+    const dayStr = toAESTDate(startRef.getTime() + d * 24 * 60 * 60 * 1000);
     const completed = countByDay[dayStr] ?? 0;
     dailyPctSum += totalHabits > 0 ? (completed / totalHabits) * 100 : 0;
   }
 
   const score = elapsedDays > 0 ? Math.round(dailyPctSum / elapsedDays) : 0;
   const scoreField = isChallenger ? 'challenger_score' : 'opponent_score';
-  console.log('[recalculateScore] battleId=%d userId=%d isChallenger=%s suddenDeath=%s startRef=%s elapsedDays=%d totalHabits=%d dailyCounts=%j score=%d',
+  console.log('[recalculateScore] battleId=%d userId=%d isChallenger=%s suddenDeath=%s startRef=%s elapsedDays=%d totalHabits=%d countByDay=%j score=%d',
     battle.id, userId, isChallenger, battle.sudden_death, startRef.toISOString(), elapsedDays,
-    totalHabits, dailyCounts, score);
+    totalHabits, countByDay, score);
   await query(`UPDATE battles SET ${scoreField} = $1 WHERE id = $2`, [score, battle.id]);
   return score;
 }
