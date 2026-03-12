@@ -5,6 +5,7 @@ import { verifyToken } from '../middleware/auth.js';
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
 import Anthropic from '@anthropic-ai/sdk';
+import webpush from 'web-push';
 
 const router = Router();
 
@@ -16,6 +17,18 @@ cloudinary.config({
   api_key:    process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
+
+try {
+  if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    webpush.setVapidDetails(
+      `mailto:${process.env.VAPID_EMAIL || 'admin@vivify.au'}`,
+      process.env.VAPID_PUBLIC_KEY.trim(),
+      process.env.VAPID_PRIVATE_KEY.trim()
+    );
+  }
+} catch (e) {
+  console.error('web-push VAPID init failed in battles:', e.message);
+}
 
 const anthropic = new Anthropic();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -52,16 +65,41 @@ function uploadToCloudinary(buffer, options) {
   });
 }
 
+async function sendPush(userId, title, body, url) {
+  try {
+    const { rows: subs } = await query(
+      'SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = $1', [userId]
+    );
+    if (!subs.length) return;
+    const payload = JSON.stringify({ title, body, url });
+    await Promise.allSettled(subs.map(sub =>
+      webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload)
+    ));
+  } catch { /* non-fatal */ }
+}
+
 async function recalculateScore(battle, userId) {
   const isChallenger = battle.challenger_id === userId;
   const myHabits = parseHabits(isChallenger ? battle.opponent_assigned_habits : battle.challenger_assigned_habits);
-  const today = todayStr();
+  // During sudden death, only count proofs submitted after sudden_death_started_at
+  const proofParams = [battle.id, userId];
+  let dateFilter = '';
+  if (battle.sudden_death && battle.sudden_death_started_at) {
+    dateFilter = 'AND created_at > $3';
+    proofParams.push(battle.sudden_death_started_at);
+  }
+  // Query battle_proofs where final_verified IS NOT FALSE (includes null=pending, true=verified; excludes false=rejected)
   const { rows: logs } = await query(
-    'SELECT habit_name, completed_date FROM battle_habit_logs WHERE battle_id = $1 AND user_id = $2',
-    [battle.id, userId]
+    `SELECT DISTINCT habit_name, completed_date FROM battle_proofs
+     WHERE battle_id = $1 AND user_id = $2 AND (final_verified IS NOT FALSE) ${dateFilter}`,
+    proofParams
   );
-  const elapsed = Math.max(1, Math.ceil((new Date() - new Date(battle.starts_at)) / (1000 * 60 * 60 * 24)));
-  const elapsedDays = Math.min(elapsed, battle.duration_days);
+  const startRef = battle.sudden_death && battle.sudden_death_started_at
+    ? new Date(battle.sudden_death_started_at)
+    : new Date(battle.starts_at);
+  const maxDays = battle.sudden_death ? 1 : battle.duration_days;
+  const elapsed = Math.max(1, Math.ceil((new Date() - startRef) / (1000 * 60 * 60 * 24)));
+  const elapsedDays = Math.min(elapsed, maxDays);
   const logsByDate = {};
   for (const log of logs) {
     if (!logsByDate[log.completed_date]) logsByDate[log.completed_date] = new Set();
@@ -74,12 +112,37 @@ async function recalculateScore(battle, userId) {
   }
   const score = elapsedDays > 0 ? Math.round((completedDays / elapsedDays) * 100) : 0;
   const scoreField = isChallenger ? 'challenger_score' : 'opponent_score';
+  console.log('[recalculateScore] battleId=%d userId=%d isChallenger=%s suddenDeath=%s startRef=%s elapsed=%d elapsedDays=%d habits=%j proofRows=%d completedDays=%d score=%d',
+    battle.id, userId, isChallenger, battle.sudden_death, startRef.toISOString(), elapsed, elapsedDays,
+    myHabits.map(h => h.name), logs.length, completedDays, score);
   await query(`UPDATE battles SET ${scoreField} = $1 WHERE id = $2`, [score, battle.id]);
   return score;
 }
 
 // ── Battle completion helper ────────────────────────────────────────────────────
 async function completeBattle(battle) {
+  const xpBonus = 50 * battle.duration_days;
+
+  // Sudden death: both at 100% and not already in sudden death → trigger it
+  if (!battle.sudden_death && battle.opponent_id &&
+      battle.challenger_score >= 100 && battle.opponent_score >= 100) {
+    const newEndsAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await query(
+      `UPDATE battles SET sudden_death = true, sudden_death_started_at = NOW(),
+         ends_at = $1, challenger_score = 0, opponent_score = 0 WHERE id = $2`,
+      [newEndsAt, battle.id]
+    );
+    const title = '⚔️ SUDDEN DEATH';
+    const msg = '⚔️ SUDDEN DEATH — both warriors are undefeated. One final day decides everything.';
+    await Promise.all([
+      sendPush(battle.challenger_id, title, msg, `/battles/${battle.id}`),
+      sendPush(battle.opponent_id,   title, msg, `/battles/${battle.id}`),
+    ]);
+    console.log('[completeBattle] battle', battle.id, '— SUDDEN DEATH triggered, ends_at extended to', newEndsAt);
+    return null;
+  }
+
+  // Normal completion (including post-sudden-death)
   let winnerId = null;
   if (battle.challenger_score !== battle.opponent_score) {
     winnerId = battle.challenger_score > battle.opponent_score
@@ -91,7 +154,6 @@ async function completeBattle(battle) {
     [winnerId, battle.id]
   );
   if (winnerId) {
-    const xpBonus = 50 * battle.duration_days;
     await query(
       `UPDATE users SET duel_wins = duel_wins + 1,
          challenge_xp = challenge_xp + $1,
@@ -100,6 +162,14 @@ async function completeBattle(battle) {
       [xpBonus, winnerId]
     );
     console.log('[completeBattle] battle', battle.id, 'won by', winnerId, '— +', xpBonus, 'XP');
+  } else if (battle.sudden_death && battle.challenger_id && battle.opponent_id) {
+    // Sudden death draw: both get 50% XP
+    const halfXp = Math.floor(xpBonus / 2);
+    await Promise.all([
+      query(`UPDATE users SET challenge_xp = challenge_xp + $1, victory_bonus_pending = victory_bonus_pending + $1 WHERE id = $2`, [halfXp, battle.challenger_id]),
+      query(`UPDATE users SET challenge_xp = challenge_xp + $1, victory_bonus_pending = victory_bonus_pending + $1 WHERE id = $2`, [halfXp, battle.opponent_id]),
+    ]);
+    console.log('[completeBattle] battle', battle.id, '— sudden death DRAW, each gets +', halfXp, 'XP');
   }
   return winnerId;
 }

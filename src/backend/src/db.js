@@ -190,6 +190,10 @@ export async function initDb() {
   await query(`ALTER TABLE battles ADD COLUMN IF NOT EXISTS direct_challenge BOOLEAN NOT NULL DEFAULT FALSE`);
   await query(`ALTER TABLE battles ADD COLUMN IF NOT EXISTS opponent_notified BOOLEAN NOT NULL DEFAULT FALSE`);
 
+  // ── Sudden death columns ──────────────────────────────────────────────────
+  await query(`ALTER TABLE battles ADD COLUMN IF NOT EXISTS sudden_death BOOLEAN NOT NULL DEFAULT FALSE`);
+  await query(`ALTER TABLE battles ADD COLUMN IF NOT EXISTS sudden_death_started_at TIMESTAMPTZ`);
+
   // ── Purchases log ─────────────────────────────────────────────────────────────
   await query(`
     CREATE TABLE IF NOT EXISTS purchases (

@@ -164,6 +164,15 @@ function BattleCard({ battle, userId, isShadow, onCancel }) {
           </div>
         )}
 
+        {/* Sudden death banner */}
+        {battle.sudden_death && battle.status === 'active' && (
+          <div className="rounded-lg border border-red-800/50 bg-red-950/30 px-3 py-2 text-center">
+            <p className={`text-xs font-bold ${isShadow ? 'text-red-300' : 'text-red-400'}`}>
+              {isShadow ? '⚔️ SUDDEN DEATH — THE FINAL RECKONING' : '⚔️ Sudden Death Round'}
+            </p>
+          </div>
+        )}
+
         {/* Gauntlet habit icons */}
         {gauntletForThemIcons.length > 0 && (
           <div className="flex items-center gap-1.5">

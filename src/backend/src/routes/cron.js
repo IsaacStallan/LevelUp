@@ -41,6 +41,19 @@ async function sendStreakPush(userId, mode, streak) {
 
 const router = Router();
 
+async function sendSuddenDeathPush(userId, title, body, url) {
+  try {
+    const { rows: subs } = await query(
+      'SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = $1', [userId]
+    );
+    if (!subs.length) return;
+    const payload = JSON.stringify({ title, body, url });
+    await Promise.allSettled(subs.map(sub =>
+      webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload)
+    ));
+  } catch { /* non-fatal */ }
+}
+
 // Protect with a shared secret so only Railway cron can trigger this
 function requireCronSecret(req, res, next) {
   const secret = req.headers['x-cron-secret'];
@@ -122,11 +135,52 @@ router.get('/streak-check', requireCronSecret, async (req, res, next) => {
       }
     }
 
-    // Battle completion — close out expired active battles
+    // Battle completion — regular expired battles (not already in sudden death)
     const { rows: expiredBattles } = await query(
-      `SELECT * FROM battles WHERE status = 'active' AND ends_at <= NOW()`
+      `SELECT * FROM battles WHERE status = 'active' AND sudden_death = false AND ends_at <= NOW()`
     );
     for (const b of expiredBattles) {
+      // Both at 100% → trigger sudden death instead of completing
+      if (b.opponent_id && b.challenger_score >= 100 && b.opponent_score >= 100) {
+        const newEndsAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        await query(
+          `UPDATE battles SET sudden_death = true, sudden_death_started_at = NOW(),
+             ends_at = $1, challenger_score = 0, opponent_score = 0 WHERE id = $2`,
+          [newEndsAt, b.id]
+        );
+        const title = '⚔️ SUDDEN DEATH';
+        const msg = '⚔️ SUDDEN DEATH — both warriors are undefeated. One final day decides everything.';
+        await Promise.allSettled([
+          sendSuddenDeathPush(b.challenger_id, title, msg, `/battles/${b.id}`),
+          sendSuddenDeathPush(b.opponent_id,   title, msg, `/battles/${b.id}`),
+        ]);
+        console.log('[cron] battle', b.id, '— SUDDEN DEATH triggered');
+      } else {
+        let winner_id = null;
+        if (b.challenger_score > b.opponent_score) winner_id = b.challenger_id;
+        else if (b.opponent_score > b.challenger_score) winner_id = b.opponent_id;
+        await query(
+          `UPDATE battles SET status = 'completed', winner_id = $1 WHERE id = $2`,
+          [winner_id, b.id]
+        );
+        if (winner_id) {
+          const xpBonus = 50 * b.duration_days;
+          await query(
+            `UPDATE users SET duel_wins = duel_wins + 1,
+               challenge_xp = challenge_xp + $1,
+               victory_bonus_pending = victory_bonus_pending + $1
+             WHERE id = $2`,
+            [xpBonus, winner_id]
+          );
+        }
+      }
+    }
+
+    // Sudden death battles — handle expiry
+    const { rows: expiredSuddenDeath } = await query(
+      `SELECT * FROM battles WHERE status = 'active' AND sudden_death = true AND ends_at <= NOW()`
+    );
+    for (const b of expiredSuddenDeath) {
       let winner_id = null;
       if (b.challenger_score > b.opponent_score) winner_id = b.challenger_id;
       else if (b.opponent_score > b.challenger_score) winner_id = b.opponent_id;
@@ -134,6 +188,25 @@ router.get('/streak-check', requireCronSecret, async (req, res, next) => {
         `UPDATE battles SET status = 'completed', winner_id = $1 WHERE id = $2`,
         [winner_id, b.id]
       );
+      const xpBonus = 50 * b.duration_days;
+      if (winner_id) {
+        await query(
+          `UPDATE users SET duel_wins = duel_wins + 1,
+             challenge_xp = challenge_xp + $1,
+             victory_bonus_pending = victory_bonus_pending + $1
+           WHERE id = $2`,
+          [xpBonus, winner_id]
+        );
+        console.log('[cron] sudden death battle', b.id, 'won by', winner_id);
+      } else if (b.challenger_id && b.opponent_id) {
+        // Sudden death draw → both get 50% XP
+        const halfXp = Math.floor(xpBonus / 2);
+        await Promise.all([
+          query(`UPDATE users SET challenge_xp = challenge_xp + $1, victory_bonus_pending = victory_bonus_pending + $1 WHERE id = $2`, [halfXp, b.challenger_id]),
+          query(`UPDATE users SET challenge_xp = challenge_xp + $1, victory_bonus_pending = victory_bonus_pending + $1 WHERE id = $2`, [halfXp, b.opponent_id]),
+        ]);
+        console.log('[cron] sudden death battle', b.id, '— DRAW, each gets +', halfXp, 'XP');
+      }
     }
 
     // Auto-forfeit battles where negotiation_deadline has passed without acceptance
@@ -156,6 +229,8 @@ router.get('/streak-check', requireCronSecret, async (req, res, next) => {
       sent,
       errors,
       battles_closed: expiredBattles.length,
+      sudden_death_triggered: expiredBattles.filter(b => b.opponent_id && b.challenger_score >= 100 && b.opponent_score >= 100).length,
+      sudden_death_resolved: expiredSuddenDeath.length,
       negotiations_forfeited: expiredNegotiations.length,
     });
   } catch (err) {

@@ -208,6 +208,23 @@ export default function BattleDetailPage() {
           </div>
         )}
 
+        {/* Sudden death banner */}
+        {battle.sudden_death && battle.status === 'active' && (
+          <div
+            className="rounded-xl border border-red-700/60 p-4 text-center space-y-1"
+            style={{ background: 'linear-gradient(135deg, rgba(60,10,10,0.9), rgba(30,5,5,0.95))', boxShadow: '0 0 24px rgba(220,38,38,0.2)' }}
+          >
+            <p className={`text-base font-black tracking-wider ${isShadow ? 'text-red-300' : 'text-red-400'}`}>
+              {isShadow ? '⚔️ SUDDEN DEATH — THE FINAL RECKONING' : '⚔️ Sudden Death Round'}
+            </p>
+            <p className="text-xs text-red-500/80">
+              {isShadow
+                ? 'Both warriors stood undefeated. One final day decides everything.'
+                : 'Both players were perfect. One more day to decide the winner.'}
+            </p>
+          </div>
+        )}
+
         {/* Live scores */}
         {battle.status === 'active' && (
           <div className="rounded-2xl border border-white/[0.08] p-5"
