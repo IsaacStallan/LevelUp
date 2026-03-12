@@ -732,11 +732,19 @@ router.post('/admin/:id/recalculate', async (req, res, next) => {
     if (!battle) return res.status(404).json({ error: 'Battle not found' });
     if (battle.status !== 'active') return res.status(400).json({ error: 'Battle is not active' });
 
+    // Debug: dump all battle_proofs rows for this battle (final_verified lives here, not in battle_habit_logs)
+    const { rows: allProofs } = await query(
+      `SELECT user_id, habit_name, completed_date, ai_verified, final_verified, created_at
+       FROM battle_proofs WHERE battle_id = $1 ORDER BY user_id, completed_date`,
+      [battleId]
+    );
+    console.log('[debug] all proofs for battle %d: %j', battleId, allProofs);
+
     const [challengerScore, opponentScore] = await Promise.all([
       recalculateScore(battle, battle.challenger_id),
       battle.opponent_id ? recalculateScore(battle, battle.opponent_id) : Promise.resolve(null),
     ]);
-    res.json({ ok: true, battleId, challengerScore, opponentScore });
+    res.json({ ok: true, battleId, challengerScore, opponentScore, debug: { proofCount: allProofs.length } });
   } catch (err) { next(err); }
 });
 
