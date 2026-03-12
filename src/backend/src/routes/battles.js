@@ -60,10 +60,8 @@ async function recalculateScore(battle, userId) {
     'SELECT habit_name, completed_date FROM battle_habit_logs WHERE battle_id = $1 AND user_id = $2',
     [battle.id, userId]
   );
-  const startDate = new Date(battle.starts_at).toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' });
-  const startMs = new Date(startDate + 'T00:00:00').getTime();
-  const todayMs = new Date(today + 'T00:00:00').getTime();
-  const elapsedDays = Math.min(Math.floor((todayMs - startMs) / 86400000) + 1, battle.duration_days);
+  const elapsed = Math.max(1, Math.ceil((new Date() - new Date(battle.starts_at)) / (1000 * 60 * 60 * 24)));
+  const elapsedDays = Math.min(elapsed, battle.duration_days);
   const logsByDate = {};
   for (const log of logs) {
     if (!logsByDate[log.completed_date]) logsByDate[log.completed_date] = new Set();
@@ -536,7 +534,7 @@ router.get('/:id/progress', verifyToken, async (req, res, next) => {
     const today = todayStr();
     const daysElapsed = battle.starts_at
       ? Math.min(
-          Math.floor((new Date(today + 'T00:00:00') - new Date(new Date(battle.starts_at).toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }) + 'T00:00:00')) / 86400000) + 1,
+          Math.max(1, Math.ceil((new Date() - new Date(battle.starts_at)) / (1000 * 60 * 60 * 24))),
           battle.duration_days
         )
       : 0;
@@ -623,6 +621,28 @@ router.delete('/admin/:id', async (req, res, next) => {
     const { rowCount } = await query('DELETE FROM battles WHERE id = $1', [battleId]);
     if (rowCount === 0) return res.status(404).json({ error: 'Battle not found' });
     res.json({ ok: true, deleted: battleId });
+  } catch (err) { next(err); }
+});
+
+// POST /api/battles/admin/:id/recalculate — force score recalculation for a specific battle
+router.post('/admin/:id/recalculate', async (req, res, next) => {
+  if (req.headers['x-cron-secret'] !== process.env.CRON_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const battleId = Number(req.params.id);
+  if (!Number.isInteger(battleId) || battleId <= 0) {
+    return res.status(400).json({ error: 'Invalid battle ID' });
+  }
+  try {
+    const { rows: [battle] } = await query('SELECT * FROM battles WHERE id = $1', [battleId]);
+    if (!battle) return res.status(404).json({ error: 'Battle not found' });
+    if (battle.status !== 'active') return res.status(400).json({ error: 'Battle is not active' });
+
+    const [challengerScore, opponentScore] = await Promise.all([
+      recalculateScore(battle, battle.challenger_id),
+      battle.opponent_id ? recalculateScore(battle, battle.opponent_id) : Promise.resolve(null),
+    ]);
+    res.json({ ok: true, battleId, challengerScore, opponentScore });
   } catch (err) { next(err); }
 });
 
